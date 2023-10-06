@@ -2,13 +2,26 @@
 // FEATURES add more bytes to the compiled binary, OPTIONS change code behavior
 
 // Options I've played with:
+#if 0
+
+// Command Line Interface (CLI)
 #define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled - cant have both winkey and cli with my h/w
 #define FEATURE_SERIAL_HELP             // JBA was disabled
-// #define OPTION_WINKEY_IGNORE_LOWERCASE               // Enable for typical K1EL Winkeyer behavior (use for SkookumLogger version 1.10.14 and prior to workaround "r" bug)      // JBA - was enabled
 
+#else
+
+// Winkeyer Interface
 // ASR refers to hardware reset when serial port is opened.
 // It requires a mod to the ardunino borad or a large cap connected to the reset pin.  Let's see if the ESP32 suffers from this problem b4 we mess with this
-// #define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation) - JBA - was disabled
+#define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation) - JBA - was disable
+// #define OPTION_WINKEY_IGNORE_LOWERCASE               // Enable for typical K1EL Winkeyer behavior (use for SkookumLogger version 1.10.14 and prior to workaround "r" bug)      // JBA - was enabled
+
+#endif
+
+#define OPTION_EXCLUDE_EXTENDED_CLI_COMMANDS
+#define OPTION_EXCLUDE_MILL_MODE    // JBA - was disabled - don't think we need this
+// #define OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW // JBA was disabled - need to take a look at this
+
 
 
 // #define FEATURE_BUTTONS
@@ -125,14 +138,9 @@
 // #define OPTION_WORDSWORTH_DEUTSCH
 // #define OPTION_WORDSWORTH_NORSK
 
-#define OPTION_EXCLUDE_EXTENDED_CLI_COMMANDS
-
 // #define OPTION_DFROBOT_LCD_COMMAND_BUTTONS
 
-// #define OPTION_EXCLUDE_MILL_MODE
 // #define OPTION_NO_ULTIMATIC // reduce memory usage by removing ultimatic code.
-
-// #define OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW
 
 // #define OPTION_PERSONALIZED_STARTUP_SCREEN        // displays a user defined string of characters on the second or fourth row of the screen during startup. 1602 display requires OPTION_DO_NOT_SAY_HI
 // #define OPTION_SWAP_PADDLE_PARAMETER_CHANGE_DIRECTION        // reverses the up/down direction when using the paddles to change the wpm or sidetone frequency
