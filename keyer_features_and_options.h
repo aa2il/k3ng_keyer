@@ -4,17 +4,23 @@
 // Options I've played with:
 #if 0
 
+// This sets up what I call the "K3NG protocol"
+
 // Command Line Interface (CLI)
 #define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled - cant have both winkey and cli with my h/w
 #define FEATURE_SERIAL_HELP             // JBA was disabled
+#define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
 
 #else
 
+// This sets up what I call the "WINKEY protocol"
+
 // Winkeyer Interface
 // ASR refers to hardware reset when serial port is opened.
-// It requires a mod to the ardunino borad or a large cap connected to the reset pin.  Let's see if the ESP32 suffers from this problem b4 we mess with this
-#define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation) - JBA - was disable
+// It requires a mod to the ardunino board or a large cap connected to the reset pin.  Let's see if the ESP32 suffers from this problem b4 we mess with this
+#define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation) - JBA - was disabled
 // #define OPTION_WINKEY_IGNORE_LOWERCASE               // Enable for typical K1EL Winkeyer behavior (use for SkookumLogger version 1.10.14 and prior to workaround "r" bug)      // JBA - was enabled
+// #define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
 
 #endif
 
@@ -26,15 +32,17 @@
 
 // #define FEATURE_BUTTONS
 // #define FEATURE_COMMAND_MODE
+// #define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality
 // #define FEATURE_MEMORIES               // on the Arduino Due, you must have FEATURE_EEPROM_E24C1024 and E24C1024 EEPROM hardware in order to compile this
 // #define FEATURE_MEMORY_MACROS
-
+// #define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation)
 // #define FEATURE_BEACON                 // Go into beacon mode if paddle_left pin is LOW at boot up
 // #define FEATURE_BEACON_SETTING         // Go into beacon mode at boot up if EEPROM setting is enabled (\_ CLI Command)
 // #define FEATURE_TRAINING_COMMAND_LINE_INTERFACE
 // #define FEATURE_POTENTIOMETER          // do not enable unless you have a potentiometer connected, otherwise noise will falsely trigger wpm changes
 // #define FEATURE_SIDETONE_SWITCH        // adds switch control for the sidetone output. requires an external toggle switch (assigned to an arduino pin - see keyer_pin_settings.h). 
 // #define FEATURE_SIDETONE_NEWTONE       // Use the NewTone library, ~1k smaller code size than the standard tone library. Uses timer1 (pins 9 or 10)  https://bitbucket.org/teckel12/arduino-new-tone/wiki/Home
+// #define FEATURE_SERIAL_HELP
 // #define FEATURE_HELL                   // Hellscreiber Mode
 // #define FEATURE_PS2_KEYBOARD           // Use a PS2 keyboard to send code - Change keyboard layout (non-US) in K3NG_PS2Keyboard.h.  Additional options below.
 // #define FEATURE_USB_KEYBOARD           // Use a USB keyboard to send code - Uncomment three lines in k3ng_keyer.ino (search for note_usb_uncomment_lines)
@@ -69,7 +77,7 @@
 // #define FEATURE_PTT_INTERLOCK 
 // #define FEATURE_QLF
 // #define FEATURE_EEPROM_E24C1024
-// #define FEATURE_STRAIGHT_KEY
+#define FEATURE_STRAIGHT_KEY                   // JBA was disabled
 // #define FEATURE_DYNAMIC_DAH_TO_DIT_RATIO
 // #define FEATURE_PADDLE_ECHO         // you may also need to comment out line 19 in the file keyer_dependencies.h
 // #define FEATURE_STRAIGHT_KEY_ECHO
@@ -140,7 +148,10 @@
 
 // #define OPTION_DFROBOT_LCD_COMMAND_BUTTONS
 
+// #define OPTION_EXCLUDE_MILL_MODE
 // #define OPTION_NO_ULTIMATIC // reduce memory usage by removing ultimatic code.
+
+// #define OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW
 
 // #define OPTION_PERSONALIZED_STARTUP_SCREEN        // displays a user defined string of characters on the second or fourth row of the screen during startup. 1602 display requires OPTION_DO_NOT_SAY_HI
 // #define OPTION_SWAP_PADDLE_PARAMETER_CHANGE_DIRECTION        // reverses the up/down direction when using the paddles to change the wpm or sidetone frequency

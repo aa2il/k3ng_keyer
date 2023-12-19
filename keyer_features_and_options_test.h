@@ -22,7 +22,7 @@
 // #define FEATURE_BEACON                // Go into beacon mode if paddle_left pin is LOW at boot up
 // #define FEATURE_BEACON_SETTING        // Go into beacon mode at boot up if EEPROM setting is enabled (\_ CLI Command)
 // #define FEATURE_TRAINING_COMMAND_LINE_INTERFACE
-#define FEATURE_POTENTIOMETER         // do not enable unless you have a potentiometer connected, otherwise noise will falsely trigger wpm changes
+// #define FEATURE_POTENTIOMETER         // do not enable unless you have a potentiometer connected, otherwise noise will falsely trigger wpm changes
 // #define FEATURE_SIDETONE_SWITCH   // adds switch control for the sidetone output. requires an external toggle switch (assigned to an arduino pin - see keyer_pin_settings.h). 
 // #define FEATURE_SIDETONE_NEWTONE      // Use the NewTone library, ~1k smaller code size than the standard tone library. Uses timer1 (pins 9 or 10)  https://bitbucket.org/teckel12/arduino-new-tone/wiki/Home
 #define FEATURE_SERIAL_HELP
@@ -75,7 +75,8 @@
 // #define FEATURE_COMMAND_MODE_ENHANCED_CMD_ACKNOWLEDGEMENT
 // #define FEATURE_WEB_SERVER      // Details: https://github.com/k3ng/k3ng_cw_keyer/wiki/390-Feature:-Ethernet,-Web-Server,-and-Internet-Linking
 // #define FEATURE_INTERNET_LINK   // Details: https://github.com/k3ng/k3ng_cw_keyer/wiki/390-Feature:-Ethernet,-Web-Server,-and-Internet-Linking
-// #define FEATURE_DUAL_MODE_KEYER_AND_TINYFSK
+// #define FEATURE_DUAL_MODE_KEYER_AND_TINYFSK // Runs on Raspberry Pi Pico
+// #define FEATURE_AUDIOPWMSINEWAVE // Raspberry Pi Pico hardware only
 
 // UNDER DEVELOPMENT
 // #define FEATURE_SINEWAVE_SIDETONE_USING_TIMER_1  // Arduino Uno: sidetone_line = 9 or 10 ; Mega: sidetone_line = 11, 12, or 13 (Further info: https://www.pjrc.com/teensy/td_libs_TimerOne.html )

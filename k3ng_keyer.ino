@@ -1,5 +1,3 @@
-
-
 /*
 
  K3NG Arduino CW Keyer
@@ -1381,6 +1379,27 @@ Recent Update History
     2023.09.29.2043
       FEATURE_WINKEY_EMULATION: corrected pot_full_scale_reading  
 
+    2023.10.01.1410
+      FEATURE_DUAL_MODE_KEYER_AND_TINYFSK: eeprom should be working now
+      Raspberry Pi Pico now supported for everything except PS2 keyboard and sleep
+
+    2023.10.03.2351
+      More work on FEATURE_DUAL_MODE_KEYER_AND_TINYFSK
+
+    2023.10.04.2255
+      FEATURE_DUAL_MODE_KEYER_AND_TINYFSK: fixed issue with eeprom config load
+
+    2023.10.06.1053
+      FEATURE_INTERNET_LINK: Fix lock up related to initialization order (Thanks, SM3GSJ Roger)
+    
+    2023.10.09.2308
+      FEATURE_WINKEY_EMULATION: Now expect three parameters from deprecated Paddle A2D command
+
+    2023.10.28.2304
+      FEATURE_AUDIOPWMSINEWAVE for Raspberry Pi Pico 
+
+  qwerty
+
   Documentation: https://github.com/k3ng/k3ng_cw_keyer/wiki
 
   Support: https://groups.io/g/radioartisan  ( Please do not email K3NG directly for support.  Thanks )
@@ -1409,7 +1428,7 @@ If you offer a hardware kit using this software, show your appreciation by sendi
 */
 
 
-#define CODE_VERSION "2023.09.21.0033"
+#define CODE_VERSION "2023.10.28.2304"
 
 #define eeprom_magic_number 41               // you can change this number to have the unit re-initialize EEPROM
 
@@ -1587,7 +1606,7 @@ If you offer a hardware kit using this software, show your appreciation by sendi
   #define noTone noNewTone
 #endif //FEATURE_SIDETONE_NEWTONE
 
-#if defined(FEATURE_SLEEP)
+#if defined(FEATURE_SLEEP) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
   #include <avr/sleep.h>  // It should be different library for ARM sp5iou
 #endif
 
@@ -1688,6 +1707,14 @@ If you offer a hardware kit using this software, show your appreciation by sendi
   #include <SPI.h>
   #include <SD.h>
 #endif //FEATURE_SD_CARD_SUPPORT
+
+#if defined(FEATURE_AUDIOPWMSINEWAVE)
+  #include "AudioPWMSineWave.h"
+  #define tone   PWMTone
+  #define noTone noPWMTone
+#endif
+
+
 
 #if defined(ARDUINO_SAMD_VARIANT_COMPLIANCE)
   extern uint32_t __get_MSP(void);
@@ -2373,10 +2400,10 @@ void setup()
   initialize_ps2_keyboard();
   initialize_usb();
   initialize_cw_keyboard();
-  initialize_display();
   initialize_ethernet();
   initialize_udp();
   initialize_web_server();
+  initialize_display();
   initialize_sd_card();
   initialize_debug_startup();
 
@@ -2394,14 +2421,12 @@ void loop()
   // this is where the magic happens
 
   #if defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
-  if (runTinyFSK){
-    TinyFSKloop();
-  } else {
+    if (runTinyFSK){
+      TinyFSKloop();
+    } else {
   #endif
 
-
-
-  #ifdef OPTION_WATCHDOG_TIMER
+  #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
     wdt_reset();
   #endif  //OPTION_WATCHDOG_TIMER
 
@@ -2428,7 +2453,7 @@ void loop()
           check_serial();
         #endif
 
-        #ifdef OPTION_WATCHDOG_TIMER
+        #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
           wdt_reset();
         #endif                                                                      // OPTION_WATCHDOG_TIMER
 
@@ -2499,7 +2524,7 @@ void loop()
       update_led_ring();
     #endif
 
-    #ifdef FEATURE_SLEEP
+    #if defined(FEATURE_SLEEP) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       check_sleep();
     #endif
 
@@ -2583,9 +2608,29 @@ void check_run_tinyfsk_pin(){
 
   
   if (pin_run_tinyfsk){
+    if (pin_rtty_running){
+      pinMode(pin_rtty_running,OUTPUT);
+    }
+    if (pin_keyer_running){
+      pinMode(pin_keyer_running,OUTPUT);
+    }    
     pinMode(pin_run_tinyfsk,INPUT_PULLUP);
     if (digitalRead(pin_run_tinyfsk) == LOW){
       runTinyFSK = 1;
+      if (pin_rtty_running){
+        digitalWrite(pin_rtty_running,HIGH);
+      }
+      if (pin_keyer_running){
+        digitalWrite(pin_keyer_running,LOW);
+      }   
+    } else {
+      runTinyFSK = 0;
+      if (pin_rtty_running){
+        digitalWrite(pin_rtty_running,LOW);
+      }
+      if (pin_keyer_running){
+        digitalWrite(pin_keyer_running,HIGH);
+      }   
     }
   }
 
@@ -3457,7 +3502,7 @@ void wakeup() {
 #endif //FEATURE_SLEEP
 */
 
-#ifdef FEATURE_SLEEP     // Code contributed by Graeme, ZL2APV 2016-01-18
+#if defined(FEATURE_SLEEP) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)     // Code contributed by Graeme, ZL2APV 2016-01-18
 void wakeup() {
   sleep_disable();
   detachInterrupt (0);
@@ -3514,7 +3559,7 @@ void check_sleep(){
 */
 
 
-#ifdef FEATURE_SLEEP   // Code contributed by Graeme, ZL2APV  2016-01-18
+#if defined(FEATURE_SLEEP) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)   // Code contributed by Graeme, ZL2APV  2016-01-18
 void check_sleep(){
 
   if ((millis() - last_activity_time) > ((unsigned long)go_to_sleep_inactivity_time*60000)){
@@ -6653,9 +6698,14 @@ void send_dit(){
     #endif
   #endif //FEATURE_FARNSWORTH
 
-  if (keyer_machine_mode == KEYER_COMMAND_MODE){
-    character_wpm = configuration.wpm_command_mode;
-  }
+  // JBA - allow paddles to be a a different speed than computer
+  #ifdef FEATURE_SEPARATE_PADDLE_SPEED
+    if( (keyer_machine_mode == KEYER_COMMAND_MODE) || (sending_mode == MANUAL_SENDING) ){
+  #else
+    if (keyer_machine_mode == KEYER_COMMAND_MODE){
+  #endif //FEATURE_SEPARATE_PADDLE_SPEED
+      character_wpm = configuration.wpm_command_mode;
+    }
 
   being_sent = SENDING_DIT;
   tx_and_sidetone_key(1);
@@ -6746,9 +6796,14 @@ void send_dah(){
     }
   #endif //FEATURE_FARNSWORTH
 
-  if (keyer_machine_mode == KEYER_COMMAND_MODE){
-    character_wpm = configuration.wpm_command_mode;
-  }
+  // JBA - allow paddles to be a a different speed than computer
+  #ifdef FEATURE_SEPARATE_PADDLE_SPEED
+    if( (keyer_machine_mode == KEYER_COMMAND_MODE) || (sending_mode == MANUAL_SENDING) ){
+  #else
+    if (keyer_machine_mode == KEYER_COMMAND_MODE){
+  #endif //FEATURE_SEPARATE_PADDLE_SPEED
+      character_wpm = configuration.wpm_command_mode;
+    }
 
   being_sent = SENDING_DAH;
   tx_and_sidetone_key(1);
@@ -7119,7 +7174,7 @@ void loop_element_lengths(float lengths, float additional_time_ms, int speed_wpm
         }
       #endif //FEATURE_INTERNET_LINK
 
-      #if defined(OPTION_WATCHDOG_TIMER)
+      #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
         wdt_reset();
       #endif  //OPTION_WATCHDOG_TIMER
 
@@ -7307,7 +7362,6 @@ void speed_change_command_mode(int change)
 
 void speed_set(int wpm_set){
 
-
   if ((wpm_set > 0) && (wpm_set < 1000)){
     configuration.wpm = wpm_set;
     config_dirty = 1;
@@ -7329,6 +7383,18 @@ void speed_set(int wpm_set){
     #endif
   }
 }
+
+// JBA
+#ifdef FEATURE_SEPARATE_PADDLE_SPEED
+void speed_set_cmd(int wpm_set){
+
+  if ((wpm_set > 0) && (wpm_set < 1000)){
+    configuration.wpm_command_mode = wpm_set;
+    config_dirty = 1;
+  }
+}
+#endif //FEATURE_SEPARATE_PADDLE_SPEED
+ 
 //-------------------------------------------------------------------------------------------------------
 
 void command_speed_set(int wpm_set) {
@@ -7370,7 +7436,7 @@ long get_cw_input_from_user(unsigned int exit_time_milliseconds) {
 
   while (looping) {
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -7468,7 +7534,7 @@ void command_mode() {
     debug_serial_port->println(F("command_mode: entering"));
   #endif
 
-  #ifdef OPTION_WATCHDOG_TIMER
+  #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
     wdt_disable();
   #endif //OPTION_WATCHDOG_TIMER
 
@@ -7874,7 +7940,6 @@ void command_mode() {
           config_dirty = 1;
           break;
         case 2212: // Q - set keying compensation
-//zzzzzz
           command_keying_compensation_adjust();
           break;
 
@@ -8229,7 +8294,7 @@ void command_mode() {
     paddle_echo_buffer = 0;
   #endif
 
-  #ifdef OPTION_WATCHDOG_TIMER
+  #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
     wdt_enable(WDTO_4S);
   #endif //OPTION_WATCHDOG_TIMER
 	
@@ -8645,7 +8710,7 @@ void command_keying_compensation_adjust() {
     }
 
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -8687,7 +8752,7 @@ void command_dah_to_dit_ratio_adjust() {
     }
 
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -8728,7 +8793,7 @@ void command_weighting_adjust() {
       looping = 0;
     }
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -8766,7 +8831,7 @@ void command_tuning_mode() {
   key_tx = 1;
   while (looping) {
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -8898,7 +8963,7 @@ void command_sidetone_freq_adj() {
       looping = 0;
     }
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -8974,7 +9039,7 @@ void command_speed_mode(byte mode) {
       looping = 0;
     }
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -9415,11 +9480,11 @@ void beep()
 {
   #if !defined(OPTION_SIDETONE_DIGITAL_OUTPUT_NO_SQUARE_WAVE)
     // #if defined(FEATURE_SINEWAVE_SIDETONE)
-    //   tone(sidetone_line, hz_high_beep);
-    //   delay(200);
-    //   noTone(sidetone_line);
+      tone(sidetone_line, hz_high_beep);
+      delay(200);
+      noTone(sidetone_line);
     // #else
-      tone(sidetone_line, hz_high_beep, 200);
+    //  tone(sidetone_line, hz_high_beep, 200);
     // #endif
   #else
     if (sidetone_line) {
@@ -9566,7 +9631,7 @@ void send_the_dits_and_dahs(char const * cw_to_send){
       #endif
     #endif
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -10520,7 +10585,20 @@ void winkey_unbuffered_speed_command(byte incoming_serial_byte) {
       configuration.pot_activated = 1;
     #endif
   } else {
-    configuration.wpm = incoming_serial_byte;
+      // JBA - if over 64 WPM, assume command is for paddle settings
+      // Would like to make the threshold 100 but bytes are unsigned
+      // so anything above 27 wpm gets hosed and I'm too lazy to work
+      // through the additional logic - hi hi.
+      // configuration.wpm = incoming_serial_byte;   
+      if (incoming_serial_byte < 64)
+        configuration.wpm = incoming_serial_byte;
+      else
+        #ifdef FEATURE_SEPARATE_PADDLE_SPEED
+        configuration.wpm_command_mode = incoming_serial_byte-64;
+        #else
+        configuration.wpm = incoming_serial_byte-64;
+        #endif //FEATURE_SEPARATE_PADDLE_SPEED
+
     winkey_speed_state = WINKEY_UNBUFFERED_SPEED;
     winkey_last_unbuffered_speed_wpm = configuration.wpm;
     //calculate_element_length();
@@ -11532,7 +11610,7 @@ void service_winkey(byte action) {
               debug_serial_port->println("service_winkey:WINKEY_SIDETONE_FREQ_COMMAND");
             #endif //DEBUG_WINKEY
             break;
-          case 0x02:  // speed command - unbuffered
+          case 0x02:  // speed command - unbuffered                        - JBA !!!!!!!!!!!!!!
             winkey_status = WINKEY_UNBUFFERED_SPEED_COMMAND;
             #ifdef DEBUG_WINKEY
               debug_serial_port->println("service_winkey:WINKEY_UNBUFFERED_SPEED_COMMAND");
@@ -12100,7 +12178,11 @@ void service_winkey(byte action) {
             #ifdef DEBUG_WINKEY
               debug_serial_port->println("service_winkey:ADMIN_CMD hostclose");
             #endif //DEBUG_WINKEY
-            beep_boop();
+            #if defined(OPTION_WINKEY_BLINK_PTT_ON_HOST_OPEN)
+              blink_ptt_dits_and_dahs("--");
+            #else
+              boop_beep();
+            #endif
             config_dirty = 1;
             #if defined(OPTION_WINKEY_2_SUPPORT) && !defined(OPTION_WINKEY_2_HOST_CLOSE_NO_SERIAL_PORT_RESET)
               primary_serial_port->end();
@@ -12115,7 +12197,8 @@ void service_winkey(byte action) {
             break;
           case 0x05: // paddle A2D
             winkey_port_write(WINKEY_RETURN_THIS_FOR_ADMIN_PADDLE_A2D,0);
-            winkey_status = WINKEY_NO_COMMAND_IN_PROGRESS;
+            // winkey_status = WINKEY_NO_COMMAND_IN_PROGRESS;
+            winkey_status = WINKEY_ADMIN_PADDLE_A2D_PARM_1;
             #ifdef DEBUG_WINKEY
               debug_serial_port->println("service_winkey:ADMIN_CMD paddleA2D");
             #endif //DEBUG_WINKEY
@@ -12370,6 +12453,26 @@ void service_winkey(byte action) {
         winkey_status = WINKEY_NO_COMMAND_IN_PROGRESS;
       }
 
+      if (winkey_status ==  WINKEY_ADMIN_PADDLE_A2D_PARM_3) {
+        #ifdef DEBUG_WINKEY
+          debug_serial_port->println("service_winkey:ADMIN_COMMAND WINKEY_ADMIN_PADDLE_A2D_PARM_3 byte");
+        #endif //DEBUG_WINKEY         
+        winkey_status = WINKEY_NO_COMMAND_IN_PROGRESS;
+      }    
+
+      if (winkey_status ==  WINKEY_ADMIN_PADDLE_A2D_PARM_2) {
+        #ifdef DEBUG_WINKEY
+          debug_serial_port->println("service_winkey:ADMIN_COMMAND WINKEY_ADMIN_PADDLE_A2D_PARM_2 byte");
+        #endif //DEBUG_WINKEY                
+        winkey_status = WINKEY_ADMIN_PADDLE_A2D_PARM_3;
+      }      
+      if (winkey_status ==  WINKEY_ADMIN_PADDLE_A2D_PARM_1) {
+        winkey_status = WINKEY_ADMIN_PADDLE_A2D_PARM_2;
+        #ifdef DEBUG_WINKEY
+          debug_serial_port->println("service_winkey:ADMIN_COMMAND WINKEY_ADMIN_PADDLE_A2D_PARM_1 byte");
+        #endif //DEBUG_WINKEY        
+      }      
+
     } // else (winkey_status == WINKEY_NO_COMMAND_IN_PROGRESS)
   }  // if (action == SERVICE_SERIAL_BYTE
 
@@ -12480,7 +12583,10 @@ void service_command_line_interface(PRIMARY_SERIAL_CLS * port_to_use) {
       }
     }
   } else { // (serial_backslash_command == 0) -- we already got a backslash
-      incoming_serial_byte = uppercase(incoming_serial_byte);
+      #ifdef FEATURE_SEPARATE_PADDLE_SPEED
+        if( incoming_serial_byte!='w' )     //JBA
+      #endif //FEATURE_SEPARATE_PADDLE_SPEED
+          incoming_serial_byte = uppercase(incoming_serial_byte);
       port_to_use->write(incoming_serial_byte);
       process_serial_command(port_to_use);
       serial_backslash_command = 0;
@@ -12946,6 +13052,9 @@ void process_serial_command(PRIMARY_SERIAL_CLS * port_to_use) {
         break;
     #endif
     case 'W': serial_wpm_set(port_to_use);break;                                        // W - set WPM
+    #ifdef FEATURE_SEPARATE_PADDLE_SPEED
+      case 'w': serial_wpm_set_cmd(port_to_use);break;                                    // w - set WPM - JBA
+    #endif //FEATURE_SEPARATE_PADDLE_SPEED
     case 'X': serial_switch_tx(port_to_use);break;                                      // X - switch transmitter
     case 'Y': serial_change_wordspace(port_to_use); break;
     #ifdef FEATURE_AUTOSPACE
@@ -13388,7 +13497,7 @@ void sd_card_clear_log_file(PRIMARY_SERIAL_CLS * port_to_use,String filename) {
   sd_card_log_state = SD_CARD_LOG_NOT_OPEN;
   if (!sdfile){
     port_to_use->println(F("Unable to open file "));
-    sd_card_state = SD_CARD_ERROR;
+    sd_card_state = SD_CARD_ERROR_;
     sd_card_log_state = SD_CARD_LOG_ERROR;
   }
   sdlogfile.close();
@@ -14008,7 +14117,6 @@ int serial_get_number_input(byte places,int lower_limit, int upper_limit,PRIMARY
       }
     } else {
       incoming_serial_byte = port_to_use->read();
-      // primary_serial_port->println(incoming_serial_byte);
       port_to_use->write(incoming_serial_byte);
       if ((incoming_serial_byte > 47) && (incoming_serial_byte < 58)) {    // ascii 48-57 = "0" - "9")
         numberstring = numberstring + incoming_serial_byte;
@@ -14017,13 +14125,15 @@ int serial_get_number_input(byte places,int lower_limit, int upper_limit,PRIMARY
         if (numberindex > places){
             looping = 0;
             error = 1;
+            port_to_use->println(F("SERIAL_GET_NUMBER: Too many places ..."));  // JBA
         }
       } else {
-        if (incoming_serial_byte <= 13) {   // carriage return - get out - JBA changed to <= so get LF also
+        if (incoming_serial_byte <= 13) {   // carriage return or line feed - get out JBA
           looping = 0;
         } else {                 // bogus input - error out
           looping = 0;
           error = 1;
+          port_to_use->println(F("SERIAL_GET_NUMBER: Bogus input ... "));   //JBA
         }
       }
     }
@@ -14175,6 +14285,19 @@ void serial_wpm_set(PRIMARY_SERIAL_CLS * port_to_use) {
     config_dirty = 1;
   }
 }
+
+#ifdef FEATURE_SEPARATE_PADDLE_SPEED
+void serial_wpm_set_cmd(PRIMARY_SERIAL_CLS * port_to_use) {
+  int set_wpm = serial_get_number_input(3,0,1000, port_to_use, RAISE_ERROR_MSG);
+  if (set_wpm > 0) {
+    speed_set_cmd(set_wpm);
+    port_to_use->write("\r\nSetting CMD WPM to ");
+    port_to_use->println(set_wpm,DEC);
+    config_dirty = 1;
+  }
+}
+#endif //FEATURE_SEPARATE_PADDLE_SPEED
+
 #endif
 
 //---------------------------------------------------------------------
@@ -17128,7 +17251,12 @@ byte play_memory(byte memory_number) {
                 }
                 if (input_error != 1) {
                   speed_mode = SPEED_NORMAL;
-                  speed_set(int_from_macro);
+                  #ifdef FEATURE_SEPARATE_PADDLE_SPEED
+                  if(eeprom_byte_read==':')           // JBA
+                    speed_set_cmd(int_from_macro);    // JBA
+                  else                                // JBA
+                  #endif //FEATURE_SEPARATE_PADDLE_SPEED
+                    speed_set(int_from_macro);
                 }
                 break;  // case W
 
@@ -17633,7 +17761,7 @@ void initialize_pins() {
     digitalWrite(compression_detection_pin,LOW);
   #endif //FEATURE_COMPETITION_COMPRESSION_DETECTION
 
-  #if defined(FEATURE_SLEEP)
+  #if defined(FEATURE_SLEEP) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
     if (keyer_awake){
       pinMode(keyer_awake,OUTPUT);
       digitalWrite(keyer_awake,KEYER_AWAKE_PIN_AWAKE_STATE);
@@ -17860,7 +17988,15 @@ void service_cw_decoder() {
   byte cd_decoder_pin_state = HIGH;
 
   int element_duration = 0;
-  static float decoder_wpm = configuration.wpm;
+
+  // JBA
+  #ifdef FEATURE_SEPARATE_PADDLE_SPEED
+  if( sending_mode == MANUAL_SENDING )
+    static float decoder_wpm = configuration.wpm_command_mode;
+  else
+  #endif //FEATURE_SEPARATE_PADDLE_SPEED
+    static float decoder_wpm = configuration.wpm;
+  
   long decode_character = 0;
   static byte space_sent = 0;
   #ifdef FEATURE_COMMAND_LINE_INTERFACE
@@ -18139,20 +18275,39 @@ void initialize_keyer_state(){
     switch_to_tx_silent(1);
   #endif
 
-  #ifdef __LGT8FX8P__
-    /* LGT chip emulates EEPROM at the cost of giving up twice the space in program flash memory.
-     * Unortunately, the last 4 bytes of every 1KB block are read-only. Therefore 
-     * EEPROM.length() would return 1024 (readable EEPROM size), while EEPROM.size() returns 1020
-     * (writable EEPROM size). The following line will give the right figure for LGT.
-     */
-    memory_area_end = EEPROM.size() - 1; 
-  #elif (!defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO) && !defined(HARDWARE_GENERIC_STM32F103C)) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
-    memory_area_end = EEPROM.length() - 1;
-  #else
-    #if defined(HARDWARE_GENERIC_STM32F103C)
-      memory_area_end = 254;
+  #if !defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
+    #ifdef __LGT8FX8P__
+      /* LGT chip emulates EEPROM at the cost of giving up twice the space in program flash memory.
+      * Unortunately, the last 4 bytes of every 1KB block are read-only. Therefore 
+      * EEPROM.length() would return 1024 (readable EEPROM size), while EEPROM.size() returns 1020
+      * (writable EEPROM size). The following line will give the right figure for LGT.
+      */
+      memory_area_end = EEPROM.size() - 1; 
+    #elif (!defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO) && !defined(HARDWARE_GENERIC_STM32F103C)) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
+      memory_area_end = EEPROM.length() - 1;
     #else
-      memory_area_end = 1024; // not sure if this is a valid assumption
+      #if defined(HARDWARE_GENERIC_STM32F103C)
+        memory_area_end = 254;
+      #else
+        memory_area_end = 1024; // not sure if this is a valid assumption
+      #endif
+    #endif
+  #else
+    #ifdef __LGT8FX8P__
+      /* LGT chip emulates EEPROM at the cost of giving up twice the space in program flash memory.
+      * Unortunately, the last 4 bytes of every 1KB block are read-only. Therefore 
+      * EEPROM.length() would return 1024 (readable EEPROM size), while EEPROM.size() returns 1020
+      * (writable EEPROM size). The following line will give the right figure for LGT.
+      */
+      memory_area_end = EEPROM.size() - 1 - 2; 
+    #elif (!defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO) && !defined(HARDWARE_GENERIC_STM32F103C)) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
+      memory_area_end = EEPROM.length() - 1 - 2;
+    #else
+      #if defined(HARDWARE_GENERIC_STM32F103C)
+        memory_area_end = 254 - 2;
+      #else
+        memory_area_end = 1024 - 2; // not sure if 1024 is a valid assumption
+      #endif
     #endif
   #endif
 
@@ -18218,7 +18373,7 @@ void initialize_default_modes(){
 
 void initialize_watchdog(){
 
-  #ifdef OPTION_WATCHDOG_TIMER
+  #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
     wdt_enable(WDTO_4S);
   #endif //OPTION_WATCHDOG_TIMER
 
@@ -18595,7 +18750,7 @@ void blink_ptt_dits_and_dahs(char const * cw_to_send){
     }
 
 
-    #ifdef OPTION_WATCHDOG_TIMER
+    #if defined(OPTION_WATCHDOG_TIMER) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
       wdt_reset();
     #endif  //OPTION_WATCHDOG_TIMER
 
@@ -20333,7 +20488,7 @@ void web_print_page_about(EthernetClient client){
   web_client_println(client,CODE_VERSION);
   web_client_println(client,"<br>");
 
-  #if !defined(HARDWARE_GENERIC_STM32F103C)
+  #if !defined(HARDWARE_GENERIC_STM32F103C) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)
     void* HP = malloc(4);
     if (HP){
       free (HP);
@@ -22045,7 +22200,7 @@ void service_sd_card(){
     if (sdfile){
       sd_card_state = SD_CARD_AVAILABLE_BEACON_FILE_RUNNING;
     } else {
-      sd_card_state = SD_CARD_ERROR;
+      sd_card_state = SD_CARD_ERROR_;
     }
   }
 
