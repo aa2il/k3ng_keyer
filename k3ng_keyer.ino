@@ -2906,7 +2906,6 @@ void service_keypad(){
   long service_straight_key(){
 
     static byte last_straight_key_state = 0;
-  primary_serial_port->println(F("STRAIGHT KEY 1 ..."));    
 
     if (digitalRead(pin_straight_key) == STRAIGHT_KEY_ACTIVE_STATE){
       if (!last_straight_key_state){
@@ -2930,7 +2929,6 @@ void service_keypad(){
     }
 
 
-  primary_serial_port->println(F("STRAIGHT KEY 10 ..."));    
   #if defined(FEATURE_STRAIGHT_KEY_DECODE)
 
     static unsigned long last_transition_time = 0;
@@ -2961,6 +2959,7 @@ void service_keypad(){
 
 
     if  (last_transition_time == 0) {
+      
       if (last_straight_key_state == 1) {  // is this our first tone?
         last_transition_time = millis();
         last_state = 1;
@@ -2998,7 +2997,9 @@ void service_keypad(){
 
           }// should we send a space?
       }
+      
     } else {
+      
       if (last_straight_key_state != last_state) {
         // we have a transition
         element_duration = millis() - last_transition_time;
@@ -3321,12 +3322,7 @@ void service_keypad(){
   #endif //FEATURE_STRAIGHT_KEY_DECODE
 
 
-
-
-
-
-
-  primary_serial_port->println(F("STRAIGHT KEY 99 ..."));    
+  return(0);        // JBA, need this to fix bug on esp32?
   }
 #endif //FEATURE_STRAIGHT_KEY
 

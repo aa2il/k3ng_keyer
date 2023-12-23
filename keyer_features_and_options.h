@@ -77,9 +77,7 @@
 // #define FEATURE_PTT_INTERLOCK 
 // #define FEATURE_QLF
 // #define FEATURE_EEPROM_E24C1024
-#ifndef ESP32
-#define FEATURE_STRAIGHT_KEY                   // JBA was disabled - causes problems with ESP32 ...
-#endif
+#define FEATURE_STRAIGHT_KEY                   // JBA was disabled 
 // #define FEATURE_DYNAMIC_DAH_TO_DIT_RATIO
 // #define FEATURE_PADDLE_ECHO         // you may also need to comment out line 19 in the file keyer_dependencies.h
 // #define FEATURE_STRAIGHT_KEY_ECHO
