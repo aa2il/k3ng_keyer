@@ -1,6 +1,6 @@
 /*
 
- K3NG Arduino CW Keyer
+ K3NG Arduino CW Keyer - JBA MODS
 
  Copyright 2011 - 2021 Anthony Good, K3NG
  All trademarks referred to in source code and documentation are copyright their respective owners.
@@ -1452,7 +1452,7 @@ If you offer a hardware kit using this software, show your appreciation by sendi
 #elif defined(ARDUINO_ARCH_MBED) || defined(ARDUINO_RASPBERRY_PI_PICO_W) || defined(ARDUINO_RASPBERRY_PI_PICO)
   #include <EEPROM.h>
   #include <avr/pgmspace.h>
-#else
+#elif !defined(ESP32)
   #include <avr/pgmspace.h>
   #include <avr/wdt.h>
   #include <EEPROM.h>
@@ -1643,7 +1643,7 @@ If you offer a hardware kit using this software, show your appreciation by sendi
 
 #if defined(FEATURE_LCD_SAINSMART_I2C)
   #include <LiquidCrystal_I2C.h>
-#endif
+#endif //FEATURE_SAINSMART_I2C_LCD  
 
 #if defined(FEATURE_LCD_FABO_PCF8574)
   #include <FaBoLCD_PCF8574.h>
@@ -1685,8 +1685,10 @@ If you offer a hardware kit using this software, show your appreciation by sendi
     #include <EthernetUdp.h>
   #endif //FEATURE_INTERNET_LINK
 #endif //!defined(ARDUINO_MAPLE_MINI) && !defined(ARDUINO_GENERIC_STM32F103C) //sp5iou 20180329
-#endif //FEATURE_ETHERNET
-
+//#endif //FEATURE_ETHERNET
+#elif defined(ESP32)
+#include <Ethernet.h>  // if this is not included, compilation fails even though all ethernet code is #ifdef'ed out
+#endif
 
 #if defined(FEATURE_USB_KEYBOARD) || defined(FEATURE_USB_MOUSE)  // note_usb_uncomment_lines
   // #include <hidboot.h>  // Arduino 1.6.x (and maybe 1.5.x) has issues with these three lines, moreover we noted that Arduino 1.8.6 it's not afected by an issue during USB Shield SPI init see https://github.com/felis/USB_Host_Shield_2.0/issues/390
@@ -1714,7 +1716,10 @@ If you offer a hardware kit using this software, show your appreciation by sendi
   #define noTone noPWMTone
 #endif
 
-
+#if defined(ESP32)
+  #define tone   Tone32
+  #define noTone NoTone32
+#endif
 
 #if defined(ARDUINO_SAMD_VARIANT_COMPLIANCE)
   extern uint32_t __get_MSP(void);
@@ -1787,7 +1792,11 @@ struct config_t {  // 120 bytes total
 
 } configuration;
 
-
+#if defined(ESP32)
+  void add_to_send_buffer(byte incoming_serial_byte);
+  #include "keyer_esp32now.h"
+  #include "keyer_esp32.h"
+#endif
 
 byte sending_mode = UNDEFINED_SENDING;
 byte command_mode_disable_tx = 0;
@@ -1810,7 +1819,7 @@ byte config_dirty = 0;
 unsigned long ptt_time = 0;
 byte ptt_line_activated = 0;
 byte speed_mode = SPEED_NORMAL;
-#if defined(FEATURE_COMMAND_LINE_INTERFACE) || defined(FEATURE_PS2_KEYBOARD) || defined(FEATURE_MEMORY_MACROS) || defined(FEATURE_MEMORIES) || defined(FEATURE_COMMAND_MODE)
+#if defined(FEATURE_COMMAND_LINE_INTERFACE) || defined(FEATURE_PS2_KEYBOARD) || defined(FEATURE_MEMORY_MACROS) || defined(FEATURE_MEMORIES) || defined(FEATURE_COMMAND_MODE) || defined(DEBUG_STARTUP)
   unsigned int serial_number = 1;
 #endif
 byte pause_sending_buffer = 0;
@@ -2367,8 +2376,9 @@ byte async_eeprom_write = 0;
 
 void setup()
 {
-
-
+  #ifdef ESPNOW_WIRELESS_KEYER
+    initialize_espnow_wireless(speed_set);
+  #endif
 
   #if defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
   check_run_tinyfsk_pin();
@@ -2381,6 +2391,11 @@ void setup()
   initialize_pins();
   // initialize_serial_ports();        // Goody - this is available for testing startup issues
   // initialize_debug_startup();       // Goody - this is available for testing startup issues
+  #ifdef ESP32
+  //initialize_serial_ports();
+  //initializeSpiffs(primary_serial_port);
+  //initDisplay();
+  #endif
   initialize_keyer_state();
   initialize_potentiometer();
   initialize_rotary_encoder();
@@ -2891,6 +2906,7 @@ void service_keypad(){
   long service_straight_key(){
 
     static byte last_straight_key_state = 0;
+  primary_serial_port->println(F("STRAIGHT KEY 1 ..."));    
 
     if (digitalRead(pin_straight_key) == STRAIGHT_KEY_ACTIVE_STATE){
       if (!last_straight_key_state){
@@ -2914,6 +2930,7 @@ void service_keypad(){
     }
 
 
+  primary_serial_port->println(F("STRAIGHT KEY 10 ..."));    
   #if defined(FEATURE_STRAIGHT_KEY_DECODE)
 
     static unsigned long last_transition_time = 0;
@@ -3309,6 +3326,7 @@ void service_keypad(){
 
 
 
+  primary_serial_port->println(F("STRAIGHT KEY 99 ..."));    
   }
 #endif //FEATURE_STRAIGHT_KEY
 
@@ -3932,6 +3950,7 @@ void check_for_dirty_configuration()
   #endif
 
   //if ((config_dirty) && ((millis()-last_config_write)>30000) && (!send_buffer_bytes) && (!ptt_line_activated)) {
+  #if !defined(ESP32)
   if ((config_dirty) && ((millis()-last_config_write)>eeprom_write_time_ms) && (!send_buffer_bytes) && (!ptt_line_activated) && (!dit_buffer) && (!dah_buffer) && (!async_eeprom_write) && (paddle_pin_read(paddle_left) == HIGH)  && (paddle_pin_read(paddle_right) == HIGH) ) {
     write_settings_to_eeprom(0);
     last_config_write = millis();
@@ -3939,6 +3958,12 @@ void check_for_dirty_configuration()
       debug_serial_port->println(F("check_for_dirty_configuration: wrote config\n"));
     #endif
   }
+  #else
+    if (config_dirty) 
+    {
+      write_settings_to_eeprom(0);
+    }
+  #endif
 
 }
 
@@ -6360,7 +6385,8 @@ void check_ptt_tail()
 //-------------------------------------------------------------------------------------------------------
 void write_settings_to_eeprom(int initialize_eeprom) {
 
-  #if (!defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
+  #if !defined(ESP32)
+  #if !defined(ARDUINO_SAM_DUE) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
 
     if (initialize_eeprom) {
       //configuration.magic_number = eeprom_magic_number;
@@ -6380,7 +6406,6 @@ void write_settings_to_eeprom(int initialize_eeprom) {
 
   #endif //!defined(ARDUINO_SAM_DUE) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
 
-
   #if defined(ARDUINO_RASPBERRY_PI_PICO_W) || defined(ARDUINO_RASPBERRY_PI_PICO)
     #if defined(DEBUG_EEPROM)
       debug_serial_port->println(F("write_settings_to_eeprom: ARDUINO_RASPBERRY_PI_PICO"));
@@ -6391,6 +6416,10 @@ void write_settings_to_eeprom(int initialize_eeprom) {
     EEPROM.commit();
   #endif
 
+  #else
+    writeConfigurationToFile();
+  #endif
+    
   config_dirty = 0;
 
 }
@@ -6419,8 +6448,10 @@ void service_async_eeprom_write(){
         ee++;
         p++;
       #else
+#if !defined(ESP32)
         EEPROM.update(ee++, *p++);
       #endif
+#endif
 
       if (i < sizeof(configuration)){
         #if defined(DEBUG_ASYNC_EEPROM_WRITE)
@@ -6466,8 +6497,7 @@ int read_settings_from_eeprom() {
     return 1;
   #endif
 
-
-
+  #if !defined(ESP32)
   #if !defined(ARDUINO_SAM_DUE) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
 
     #if defined(DEBUG_EEPROM_READ_SETTINGS)
@@ -6511,6 +6541,27 @@ int read_settings_from_eeprom() {
       #if defined(DEBUG_EEPROM_READ_SETTINGS)
         debug_serial_port->println(F("read_settings_from_eeprom: eeprom needs initialized"));
       #endif
+  #else
+    if (configFileExists())
+    {
+    setConfigurationFromFile();
+    //all good, return 0
+    return 0;
+    }
+    else {
+      //no file so initialize it
+      return 1;
+    }
+  #endif
+  #else
+    if (configFileExists())
+    {
+    setConfigurationFromFile();
+    //all good, return 0
+    return 0;
+    }
+    else {
+      //no file so initialize it
       return 1;
     }
 
@@ -6682,7 +6733,6 @@ void send_dit(){
 
   unsigned int character_wpm = configuration.wpm;
 
-
   #ifdef FEATURE_FARNSWORTH
     if ((sending_mode == AUTOMATIC_SENDING) && (configuration.wpm_farnsworth > configuration.wpm)) {
       character_wpm = configuration.wpm_farnsworth;
@@ -6714,7 +6764,6 @@ void send_dit(){
   #endif
   if ((tx_key_dit) && (key_tx)) {digitalWrite(tx_key_dit,tx_key_dit_and_dah_pins_active_state);}
 
-
   #ifdef FEATURE_QLF
     if (qlf_active){
       loop_element_lengths((1.0*(float(configuration.weighting)/50)*(random(qlf_dit_min,qlf_dit_max)/100.0)),configuration.keying_compensation,character_wpm);
@@ -6724,7 +6773,6 @@ void send_dit(){
   #else //FEATURE_QLF
     loop_element_lengths((1.0*(float(configuration.weighting)/50)),configuration.keying_compensation,character_wpm);
   #endif //FEATURE_QLF
-
 
 
   if ((tx_key_dit) && (key_tx)) {digitalWrite(tx_key_dit,tx_key_dit_and_dah_pins_inactive_state);}
@@ -7296,7 +7344,6 @@ void loop_element_lengths(float lengths, float additional_time_ms, int speed_wpm
         service_straight_key();
       #endif //FEATURE_STRAIGHT_KEY
 
-
       #if defined(FEATURE_WEB_SERVER)
         if (speed_mode == SPEED_QRSS){
           service_web_server();
@@ -7323,7 +7370,6 @@ void loop_element_lengths(float lengths, float additional_time_ms, int speed_wpm
     #if defined(DEBUG_LOOP_ELEMENT_LENGTHS)
       debug_serial_port->println("loop_element_lengths: exit");
     #endif
-
 
 } //void loop_element_lengths
 
@@ -9570,7 +9616,6 @@ void send_the_dits_and_dahs(char const * cw_to_send){
 
   sending_mode = AUTOMATIC_SENDING;
 
-
   #if defined(FEATURE_SERIAL) && !defined(OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW)
     dump_current_character_flag = 0;
   #endif
@@ -9637,7 +9682,6 @@ void send_the_dits_and_dahs(char const * cw_to_send){
 
   }  // for (int x = 0;x < 12;x++)
 
-
 }
 
 //-------------------------------------------------------------------------------------------------------
@@ -9646,13 +9690,15 @@ void send_char(byte cw_char, byte omit_letterspace)
 {
   #ifdef DEBUG_SEND_CHAR
     debug_serial_port->print(F("send_char: called with cw_char:"));
+    if( cw_char<' ' )
     debug_serial_port->print((byte)cw_char);
+    else
+      debug_serial_port->print((char)cw_char);
     if (omit_letterspace) {
       debug_serial_port->print(F(" OMIT_LETTERSPACE"));
     }
     debug_serial_port->println();
   #endif
-
 
   #ifdef FEATURE_SLEEP
     last_activity_time = millis();
@@ -9855,6 +9901,7 @@ void send_char(byte cw_char, byte omit_letterspace)
         break;
 
     }
+    
     if (omit_letterspace != OMIT_LETTERSPACE) {
 
       loop_element_lengths((length_letterspace-1),0,configuration.wpm); //this is minus one because send_dit and send_dah have a trailing element space
@@ -18275,6 +18322,7 @@ void initialize_keyer_state(){
     switch_to_tx_silent(1);
   #endif
 
+#if !defined(ESP32)
   #if !defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
     #ifdef __LGT8FX8P__
       /* LGT chip emulates EEPROM at the cost of giving up twice the space in program flash memory.
@@ -18310,6 +18358,7 @@ void initialize_keyer_state(){
       #endif
     #endif
   #endif
+#endif
 
 }
 
@@ -18383,6 +18432,7 @@ void initialize_watchdog(){
 
 void check_eeprom_for_initialization(){
 
+#if !defined(ESP32)
   #if defined(ARDUINO_RASPBERRY_PI_PICO_W) || defined(ARDUINO_RASPBERRY_PI_PICO) 
     EEPROM.begin(4096);
   #endif
@@ -18392,6 +18442,7 @@ void check_eeprom_for_initialization(){
     while (paddle_pin_read(paddle_left) == LOW && paddle_pin_read(paddle_right) == LOW) {}
     initialize_eeprom();
   }
+#endif
 
   // read settings from eeprom and initialize eeprom if it has never been written to
   if (read_settings_from_eeprom()) {
