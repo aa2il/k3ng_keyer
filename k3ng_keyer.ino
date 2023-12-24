@@ -1,6 +1,20 @@
 /*
 
- K3NG Arduino CW Keyer - JBA MODS
+ K3NG Arduino CW Keyer
+
+//////////////////////////////////////////////////////////////////////////////
+
+JBA: This is the version with all of my mods - Based in a fairly recent 
+     version of this code as of the Fall of 2023.
+- Tailored to my specific h/w implementation (viz nanoIO)
+- Added separate paddling speed control
+- Ported to ESP32
+    -- Big advantage is that keyer doesn't reboot when open port (DTR asserted)
+    -- Not completely tested out yet but shows good promise
+    -- Works with Winbloz, e.g. Iambic Master
+        --- Need to install CP2102 winbloz driver from silabs.com
+
+//////////////////////////////////////////////////////////////////////////////
 
  Copyright 2011 - 2021 Anthony Good, K3NG
  All trademarks referred to in source code and documentation are copyright their respective owners.
@@ -17791,12 +17805,16 @@ void initialize_pins() {
   #endif //FEATURE_PTT_INTERLOCK
 
   #ifdef FEATURE_STRAIGHT_KEY
+    #ifdef ESP32
+    pinMode(pin_straight_key, INPUT_PULLUP);         // JBA - seems like this should be for any ucontroller?
+    #else
     pinMode(pin_straight_key,INPUT);
     if (STRAIGHT_KEY_ACTIVE_STATE == HIGH){
       digitalWrite (pin_straight_key, LOW);
     } else {
       digitalWrite (pin_straight_key, HIGH);
     }
+    #endif
   #endif //FEATURE_STRAIGHT_KEY
 
   #if defined(FEATURE_COMPETITION_COMPRESSION_DETECTION)

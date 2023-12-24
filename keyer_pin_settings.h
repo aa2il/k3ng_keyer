@@ -3,10 +3,10 @@
 #define keyer_pin_settings_h
 
 #if defined(ESP32)
-// There are some issuess getting a working combo for these!!!
+// There are some issues getting a working combo for these!!!
 // Can look at other esp32_keyer codes to see what they used ...
 // This is based on what I used for NANO IO
-// See also straight key pi below
+// See also straight key pin below
 #define sidetone_line 33         // connect a speaker for sidetone - JBA was 4 / 32
 #define paddle_left 25           // JBA was 2 / 25
 #define paddle_right 27          // JBA was 5 / 33
