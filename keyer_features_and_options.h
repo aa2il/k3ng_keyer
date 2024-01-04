@@ -7,7 +7,7 @@
 // This sets up what I call the "K3NG protocol"
 
 // Command Line Interface (CLI)
-#define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled - cant have both winkey and cli with my h/w - NOT SURE WHY, SEEMS OK NOW????!!!!
+#define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled
 #define FEATURE_SERIAL_HELP             // JBA was disabled
 #define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
 
@@ -16,9 +16,10 @@
 // This sets up what I call the "WINKEY protocol"
 
 // Winkeyer Interface
-// ASR refers to hardware reset when serial port is opened.
-// It requires a mod to the ardunino board or a large cap connected to the reset pin.  Let's see if the ESP32 suffers from this problem b4 we mess with this
-#define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled ???
+// ASR refers to hardware reset when serial port is opened (DTR is asserted).
+// It requires a mod to the ardunino board or a large cap connected to the reset pin.
+// The ESP32 does not seem to suffer from this problem so is a better option if faithful Winkey emulation is needed (e.g. for Iambic Master)
+#define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled
 #define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation) - JBA - was disabled
 // #define OPTION_WINKEY_IGNORE_LOWERCASE               // Enable for typical K1EL Winkeyer behavior (use for SkookumLogger version 1.10.14 and prior to workaround "r" bug)      // JBA - was enabled
 // #define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
@@ -26,7 +27,7 @@
 #endif
 
 #define OPTION_EXCLUDE_EXTENDED_CLI_COMMANDS
-#define OPTION_EXCLUDE_MILL_MODE    // JBA - was disabled - don't think we need this
+// #define OPTION_EXCLUDE_MILL_MODE    // JBA - was disabled - don't think we need this
 // #define OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW // JBA was disabled - need to take a look at this
 
 

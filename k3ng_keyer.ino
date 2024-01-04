@@ -2381,17 +2381,12 @@ byte async_eeprom_write = 0;
 
 void setup()
 {
-  #ifdef ESPNOW_WIRELESS_KEYER
-    initialize_espnow_wireless(speed_set);
-  #endif
-
   #if defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
   check_run_tinyfsk_pin();
   if (runTinyFSK){
     TinyFSKsetup();
   } else {
   #endif
-
 
   initialize_pins();
   // initialize_serial_ports();        // Goody - this is available for testing startup issues
@@ -2426,7 +2421,7 @@ void setup()
   initialize_display();
   initialize_sd_card();
   initialize_debug_startup();
-
+  
   #if defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
   } //if (runTinyFSK)
   #endif
@@ -3163,6 +3158,7 @@ void service_keypad(){
 
         #if defined(FEATURE_SERIAL) && defined(FEATURE_COMMAND_LINE_INTERFACE) && defined(FEATURE_STRAIGHT_KEY_ECHO)
           if (cli_straight_key_echo){
+            // JBA - this is where the straight key char is actually echoed
             primary_serial_port->write(convert_cw_number_to_ascii(decode_character));
             #ifdef FEATURE_COMMAND_LINE_INTERFACE_ON_SECONDARY_PORT
               secondary_serial_port->write(convert_cw_number_to_ascii(decode_character));
@@ -13985,6 +13981,13 @@ void service_paddle_echo()
     #endif //FEATURE_DISPLAY
 
     #if defined(FEATURE_SERIAL) && defined(FEATURE_COMMAND_LINE_INTERFACE)
+      
+     #if defined(FEATURE_WINKEY_EMULATION)
+        // JBA - prevent double echoing
+        if(winkey_paddle_echo_activated)
+          cli_paddle_echo = 0;
+      #endif
+
       #if defined(OPTION_PROSIGN_SUPPORT)
         byte_temp = convert_cw_number_to_ascii(paddle_echo_buffer);
         if (cli_paddle_echo){
@@ -16155,7 +16158,7 @@ void serial_status(PRIMARY_SERIAL_CLS * port_to_use) {
   #endif
 
   #if defined(FEATURE_PADDLE_ECHO)
-    port_to_use->print(F("Paddle Echo: O"));
+    // port_to_use->print(F("Paddle Echo: O"));
     if (cli_paddle_echo){
       port_to_use->println(F("n"));
     } else {
@@ -16167,7 +16170,7 @@ void serial_status(PRIMARY_SERIAL_CLS * port_to_use) {
 
 
   #if defined(FEATURE_STRAIGHT_KEY_ECHO)
-    port_to_use->print(F("Straight Key Echo: O"));
+    // port_to_use->print(F("Straight Key Echo: O"));
     if (cli_straight_key_echo){
       port_to_use->println(F("n"));
     } else {
