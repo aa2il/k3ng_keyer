@@ -7,7 +7,7 @@
 // This sets up what I call the "K3NG protocol"
 
 // Command Line Interface (CLI)
-#define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled - cant have both winkey and cli with my h/w
+#define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled - cant have both winkey and cli with my h/w - NOT SURE WHY, SEEMS OK NOW????!!!!
 #define FEATURE_SERIAL_HELP             // JBA was disabled
 #define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
 
@@ -18,6 +18,7 @@
 // Winkeyer Interface
 // ASR refers to hardware reset when serial port is opened.
 // It requires a mod to the ardunino board or a large cap connected to the reset pin.  Let's see if the ESP32 suffers from this problem b4 we mess with this
+#define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled ???
 #define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation) - JBA - was disabled
 // #define OPTION_WINKEY_IGNORE_LOWERCASE               // Enable for typical K1EL Winkeyer behavior (use for SkookumLogger version 1.10.14 and prior to workaround "r" bug)      // JBA - was enabled
 // #define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
@@ -80,7 +81,7 @@
 #define FEATURE_STRAIGHT_KEY                   // JBA was disabled
 // #define FEATURE_DYNAMIC_DAH_TO_DIT_RATIO
 // #define FEATURE_PADDLE_ECHO         // you may also need to comment out line 19 in the file keyer_dependencies.h
-// #define FEATURE_STRAIGHT_KEY_ECHO
+#define FEATURE_STRAIGHT_KEY_ECHO         // JBA was disabled
 // #define FEATURE_AMERICAN_MORSE
 // #define FEATURE_4x4_KEYPAD          // code contributed by Jack, W0XR - documentation: https://github.com/k3ng/k3ng_cw_keyer/wiki/380-Feature:-Keypad
 // #define FEATURE_3x4_KEYPAD          // code contributed by Jack, W0XR - documentation: https://github.com/k3ng/k3ng_cw_keyer/wiki/380-Feature:-Keypad

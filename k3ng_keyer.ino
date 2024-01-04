@@ -13,6 +13,7 @@ JBA: This is the version with all of my mods - Based in a fairly recent
     -- Not completely tested out yet but shows good promise
     -- Works with Winbloz, e.g. Iambic Master
         --- Need to install CP2102 winbloz driver from silabs.com
+    -- Port is based on work found at https://github.com/RandyLoeb/esp32_cw_keyer
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -1699,9 +1700,6 @@ If you offer a hardware kit using this software, show your appreciation by sendi
     #include <EthernetUdp.h>
   #endif //FEATURE_INTERNET_LINK
 #endif //!defined(ARDUINO_MAPLE_MINI) && !defined(ARDUINO_GENERIC_STM32F103C) //sp5iou 20180329
-//#endif //FEATURE_ETHERNET
-#elif defined(ESP32)
-#include <Ethernet.h>  // if this is not included, compilation fails even though all ethernet code is #ifdef'ed out
 #endif
 
 #if defined(FEATURE_USB_KEYBOARD) || defined(FEATURE_USB_MOUSE)  // note_usb_uncomment_lines
@@ -1728,11 +1726,6 @@ If you offer a hardware kit using this software, show your appreciation by sendi
   #include "AudioPWMSineWave.h"
   #define tone   PWMTone
   #define noTone noPWMTone
-#endif
-
-#if defined(ESP32)
-  #define tone   Tone32
-  #define noTone NoTone32
 #endif
 
 #if defined(ARDUINO_SAMD_VARIANT_COMPLIANCE)
@@ -1807,8 +1800,6 @@ struct config_t {  // 120 bytes total
 } configuration;
 
 #if defined(ESP32)
-  void add_to_send_buffer(byte incoming_serial_byte);
-  #include "keyer_esp32now.h"
   #include "keyer_esp32.h"
 #endif
 
@@ -2942,7 +2933,6 @@ void service_keypad(){
       }
     }
 
-
   #if defined(FEATURE_STRAIGHT_KEY_DECODE)
 
     static unsigned long last_transition_time = 0;
@@ -3063,6 +3053,8 @@ void service_keypad(){
 
     if (decode_it_flag) {                      // are we ready to decode the element array?
 
+      //primary_serial_port->println(F("HEY 1"));
+
       // adjust the decoder wpm based on what we got
 
       if ((no_tone_count > 0) && (tone_count > 1)){ // NEW
@@ -3123,6 +3115,8 @@ void service_keypad(){
         debug_serial_port->println(decode_character);
       #endif //DEBUG_FEATURE_STRAIGHT_KEY_ECHO
 
+        //primary_serial_port->println(F("HEY 5"));
+        //primary_serial_port->println(decode_character);
 
       #if defined(OPTION_PROSIGN_SUPPORT)
         byte cw_ascii_temp = convert_cw_number_to_ascii(decode_character);
@@ -3331,6 +3325,11 @@ void service_keypad(){
       #endif //FEATURE_COMMAND_LINE_INTERFACE
     #endif //FEATURE_SERIAL
 
+      if(decode_character>0) {
+        //primary_serial_port->println(F("HEY 9"));
+        //primary_serial_port->println(decode_character);
+      }
+      
   return(decode_character);
 
   #endif //FEATURE_STRAIGHT_KEY_DECODE
@@ -6577,11 +6576,6 @@ int read_settings_from_eeprom() {
 
   #endif //#if !defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED)|| (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
 
-
-  
-
-
-
   #if defined(DEBUG_EEPROM_READ_SETTINGS)
     debug_serial_port->println(F("read_settings_from_eeprom: bypassed read - no eeprom"));
   #endif
@@ -6595,9 +6589,6 @@ int read_settings_from_eeprom() {
 
 void check_dit_paddle()
 {
-
-
-
   byte pin_value = 0;
   byte dit_paddle = 0;
   #ifdef OPTION_DIT_PADDLE_NO_SEND_ON_MEM_RPT
@@ -17547,6 +17538,9 @@ void program_memory(int memory_number)
        #if defined(FEATURE_STRAIGHT_KEY)
          straight_key_decoded_character = service_straight_key();
          if (straight_key_decoded_character != 0){
+           //primary_serial_port->println(F("HEY 20"));
+           //primary_serial_port->println(straight_key_decode_character);
+           
            cwchar = straight_key_decoded_character;
            paddle_hit = 1;
          }
