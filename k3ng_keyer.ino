@@ -2391,11 +2391,6 @@ void setup()
   initialize_pins();
   // initialize_serial_ports();        // Goody - this is available for testing startup issues
   // initialize_debug_startup();       // Goody - this is available for testing startup issues
-  #ifdef ESP32
-  //initialize_serial_ports();
-  //initializeSpiffs(primary_serial_port);
-  //initDisplay();
-  #endif
   initialize_keyer_state();
   initialize_potentiometer();
   initialize_rotary_encoder();
@@ -3048,8 +3043,6 @@ void service_keypad(){
 
     if (decode_it_flag) {                      // are we ready to decode the element array?
 
-      //primary_serial_port->println(F("HEY 1"));
-
       // adjust the decoder wpm based on what we got
 
       if ((no_tone_count > 0) && (tone_count > 1)){ // NEW
@@ -3110,8 +3103,6 @@ void service_keypad(){
         debug_serial_port->println(decode_character);
       #endif //DEBUG_FEATURE_STRAIGHT_KEY_ECHO
 
-        //primary_serial_port->println(F("HEY 5"));
-        //primary_serial_port->println(decode_character);
 
       #if defined(OPTION_PROSIGN_SUPPORT)
         byte cw_ascii_temp = convert_cw_number_to_ascii(decode_character);
@@ -3321,11 +3312,6 @@ void service_keypad(){
       #endif //FEATURE_COMMAND_LINE_INTERFACE
     #endif //FEATURE_SERIAL
 
-      if(decode_character>0) {
-        //primary_serial_port->println(F("HEY 9"));
-        //primary_serial_port->println(decode_character);
-      }
-      
   return(decode_character);
 
   #endif //FEATURE_STRAIGHT_KEY_DECODE
@@ -6391,7 +6377,7 @@ void check_ptt_tail()
 void write_settings_to_eeprom(int initialize_eeprom) {
 
   #if !defined(ESP32)
-  #if !defined(ARDUINO_SAM_DUE) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
+  #if (!defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_RASPBERRY_PI_PICO_W) && !defined(ARDUINO_RASPBERRY_PI_PICO)) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
 
     if (initialize_eeprom) {
       //configuration.magic_number = eeprom_magic_number;
@@ -6502,7 +6488,7 @@ int read_settings_from_eeprom() {
     return 1;
   #endif
 
-  #if !defined(ESP32)
+#if !defined(ESP32)
   #if !defined(ARDUINO_SAM_DUE) || (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
 
     #if defined(DEBUG_EEPROM_READ_SETTINGS)
@@ -6546,31 +6532,23 @@ int read_settings_from_eeprom() {
       #if defined(DEBUG_EEPROM_READ_SETTINGS)
         debug_serial_port->println(F("read_settings_from_eeprom: eeprom needs initialized"));
       #endif
-  #else
-    if (configFileExists())
-    {
-    setConfigurationFromFile();
-    //all good, return 0
-    return 0;
-    }
-    else {
-      //no file so initialize it
-      return 1;
-    }
-  #endif
-  #else
-    if (configFileExists())
-    {
-    setConfigurationFromFile();
-    //all good, return 0
-    return 0;
-    }
-    else {
-      //no file so initialize it
       return 1;
     }
 
   #endif //#if !defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED)|| (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
+    
+  #else
+    if (configFileExists())
+    {
+    setConfigurationFromFile();
+    //all good, return 0
+    return 0;
+    }
+    else {
+      //no file so initialize it
+      return 1;
+    }
+#endif // !ESP32 
 
   #if defined(DEBUG_EEPROM_READ_SETTINGS)
     debug_serial_port->println(F("read_settings_from_eeprom: bypassed read - no eeprom"));
@@ -17541,9 +17519,6 @@ void program_memory(int memory_number)
        #if defined(FEATURE_STRAIGHT_KEY)
          straight_key_decoded_character = service_straight_key();
          if (straight_key_decoded_character != 0){
-           //primary_serial_port->println(F("HEY 20"));
-           //primary_serial_port->println(straight_key_decode_character);
-           
            cwchar = straight_key_decoded_character;
            paddle_hit = 1;
          }
