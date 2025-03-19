@@ -6,6 +6,7 @@
 
 JBA: This is the version with all of my mods - Based in a fairly recent 
      version of this code as of the Fall of 2023.
+
 - Tailored to my specific h/w implementation (viz nanoIO)
 - Added separate paddling speed control
 - Ported to ESP32
@@ -14,6 +15,10 @@ JBA: This is the version with all of my mods - Based in a fairly recent
     -- Works with Winbloz, e.g. Iambic Master
         --- Need to install CP2102 winbloz driver from silabs.com
     -- Port is based on work found at https://github.com/RandyLoeb/esp32_cw_keyer
+
+IDE Notes:
+  - Need to select correct USB port, board and programmer from TOOLS menu
+  - For arduino nano, select "Arduino Nano" and "ATmega328P (OLD Bootloader)"
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -11758,6 +11763,7 @@ void service_winkey(byte action) {
             #endif //DEBUG_WINKEY
             break;
           case 0x12:
+            // JBA - Paddle switch point is not supported :-(
             winkey_status = WINKEY_UNSUPPORTED_COMMAND;
             #ifdef DEBUG_WINKEY
               debug_serial_port->println("service_winkey:0x12unsupport");

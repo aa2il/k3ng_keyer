@@ -22,15 +22,13 @@
 #define FEATURE_COMMAND_LINE_INTERFACE // Command Line Interface functionality - JBA was disabled
 #define FEATURE_WINKEY_EMULATION       // disabling Automatic Software Reset is highly recommended (see documentation) - JBA - was disabled
 // #define OPTION_WINKEY_IGNORE_LOWERCASE               // Enable for typical K1EL Winkeyer behavior (use for SkookumLogger version 1.10.14 and prior to workaround "r" bug)      // JBA - was enabled
-// #define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
+#define FEATURE_SEPARATE_PADDLE_SPEED           // JBA new feature to use separate speeeds for computer and paddles
 
 #endif
 
 #define OPTION_EXCLUDE_EXTENDED_CLI_COMMANDS
 // #define OPTION_EXCLUDE_MILL_MODE    // JBA - was disabled - don't think we need this
-// #define OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW // JBA was disabled - need to take a look at this
-
-
+#define OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW // JBA was disabled - need to take a look at this
 
 // #define FEATURE_BUTTONS
 // #define FEATURE_COMMAND_MODE
@@ -50,8 +48,8 @@
 // #define FEATURE_USB_KEYBOARD           // Use a USB keyboard to send code - Uncomment three lines in k3ng_keyer.ino (search for note_usb_uncomment_lines)
 // #define FEATURE_CW_COMPUTER_KEYBOARD   // Have an Arduino Due or Leonardo act as a USB HID (Human Interface Device) keyboard and use the paddle to "type" characters on the computer -- uncomment this line in ino file: #include <Keyboard.h>
 // #define FEATURE_DEAD_OP_WATCHDOG
-// #define FEATURE_AUTOSPACE
-// #define FEATURE_FARNSWORTH
+#define FEATURE_AUTOSPACE                  // JBA was disabled
+#define FEATURE_FARNSWORTH                 // JBA was disabled
 // #define FEATURE_DL2SBA_BANKSWITCH       // Switch memory banks feature as described here: http://dl2sba.com/index.php?option=com_content&view=article&id=131:nanokeyer&catid=15:shack&Itemid=27#english
 // #define FEATURE_LCD_4BIT                // classic LCD display using 4 I/O lines
 // #define FEATURE_LCD_8BIT                // classic LCD display using 8 I/O lines
@@ -98,7 +96,7 @@
 // #define OPTION_SUPPRESS_SERIAL_BOOT_MSG
 #define OPTION_INCLUDE_PTT_TAIL_FOR_MANUAL_SENDING
 #define OPTION_EXCLUDE_PTT_HANG_TIME_FOR_MANUAL_SENDING
-// #define OPTION_WINKEY_DISCARD_BYTES_AT_STARTUP     // if ASR is not disabled, you may need this to discard errant serial port bytes at startup
+#define OPTION_WINKEY_DISCARD_BYTES_AT_STARTUP     // if ASR is not disabled, you may need this to discard errant serial port bytes at startup - JBA was disabled
 // #define OPTION_WINKEY_STRICT_EEPROM_WRITES_MAY_WEAR_OUT_EEPROM // with this activated the unit will write non-volatile settings to EEPROM when set by Winkey commands
 // #define OPTION_WINKEY_SEND_WORDSPACE_AT_END_OF_BUFFER
 #define OPTION_WINKEY_STRICT_HOST_OPEN               // require an admin host open Winkey command before doing any other commands
@@ -106,7 +104,7 @@
 #define OPTION_WINKEY_SEND_BREAKIN_STATUS_BYTE
 #define OPTION_WINKEY_INTERRUPTS_MEMORY_REPEAT
 //#define OPTION_WINKEY_UCXLOG_9600_BAUD              // use this only with UCXLog configured for Winkey 9600 baud mode
-#define OPTION_WINKEY_2_HOST_CLOSE_NO_SERIAL_PORT_RESET  // (Required for Win-Test to function)
+//#define OPTION_WINKEY_2_HOST_CLOSE_NO_SERIAL_PORT_RESET  // (Required for Win-Test to function)        // JBA was enabled
 // #define OPTION_WINKEY_FREQUENT_STATUS_REPORT         // activate this to make Winkey emulation play better with RUMlog and RUMped
 // #define OPTION_WINKEY_BLINK_PTT_ON_HOST_OPEN
 // #define OPTION_WINKEY_SEND_VERSION_ON_HOST_CLOSE
@@ -152,8 +150,6 @@
 
 // #define OPTION_EXCLUDE_MILL_MODE
 // #define OPTION_NO_ULTIMATIC // reduce memory usage by removing ultimatic code.
-
-// #define OPTION_DISABLE_SERIAL_PORT_CHECKING_WHILE_SENDING_CW
 
 // #define OPTION_PERSONALIZED_STARTUP_SCREEN        // displays a user defined string of characters on the second or fourth row of the screen during startup. 1602 display requires OPTION_DO_NOT_SAY_HI
 // #define OPTION_SWAP_PADDLE_PARAMETER_CHANGE_DIRECTION        // reverses the up/down direction when using the paddles to change the wpm or sidetone frequency
