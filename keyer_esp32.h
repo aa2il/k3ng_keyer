@@ -30,11 +30,16 @@ String displayContents = "";
 
 void Tone32(uint8_t pin, unsigned short freq, unsigned duration = 0)
 {
-    ledcSetup(SOUND_PWM_CHANNEL, freq, SOUND_RESOLUTION); // Set up PWM channel
-    ledcAttachPin(pin, SOUND_PWM_CHANNEL);
-    ledcWriteTone(SOUND_PWM_CHANNEL, freq); // Attach channel to pin
+  // ESP32 API Changed - OLD V2.x:
+  // ledcSetup(SOUND_PWM_CHANNEL, freq, SOUND_RESOLUTION); // Set up PWM channel
+  //ledcAttachPin(pin, SOUND_PWM_CHANNEL);
+  //ledcWriteTone(SOUND_PWM_CHANNEL, freq); // Attach channel to pin
+  
+  // New V33.x:
+  ledcAttach(pin, freq, SOUND_RESOLUTION); // Set up PWM channel
+  ledcWriteTone(pin, freq); // Attach channel to pin
 
-    delay(duration);
+  delay(duration);
 }
 void NoTone32(uint8_t pin)
 {

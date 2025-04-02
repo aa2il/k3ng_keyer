@@ -4,15 +4,8 @@
 #define initial_sidetone_freq 600        // "factory default" sidetone frequency setting
 #define sidetone_hz_limit_low 299
 #define sidetone_hz_limit_high 2001
-
-//#if defined(ESP32)
-//#define hz_high_beep (unsigned)1500      // frequency in hertz of high beep
-//#define hz_low_beep (unsigned)400        // frequency in hertz of low beep
-//#else
 #define hz_high_beep 1500                // frequency in hertz of high beep
 #define hz_low_beep 400                  // frequency in hertz of low beep
-//#endif
-
 #define initial_dah_to_dit_ratio 300     // 300 = 3 / normal 3:1 ratio
 #define initial_ptt_lead_time_tx1 0         // PTT lead time in mS
 #define initial_ptt_tail_time_tx1 10         // PTT tail time in mS
@@ -113,10 +106,13 @@
 
 
 #ifdef FEATURE_WINKEY_EMULATION
+  #define WINKEY_DEFAULT_CONFIG SERIAL_8N2        // JBA - genuine winkeyer uses 2-stop bits
   #if defined(OPTION_WINKEY_UCXLOG_9600_BAUD) || defined(FEATURE_SO2R_BASE)
     #define WINKEY_DEFAULT_BAUD 9600
   #else
-#define WINKEY_DEFAULT_BAUD 1200  // 115200     // JBA use 1152 for debug but should be 1200
+
+    #define WINKEY_DEFAULT_BAUD 1200  // 115200     // JBA use 115200 for debug but should be 1200
+  
   #endif //OPTION_WINKEY_UCXLOG_9600_BAUD  || FEATURE_SO2R_BASE
 // alter these below to map alternate sidetones for Winkey interface protocol emulation
 #ifdef OPTION_WINKEY_2_SUPPORT
@@ -152,7 +148,8 @@
 #define WINKEY_HANG_TIME_1_66 1.66
 #define WINKEY_HANG_TIME_2_0 2.0
 
-#define WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL 0x16
+#define WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL_WK1 0x0a
+#define WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL_WK2 0x18
 #define WINKEY_RETURN_THIS_FOR_ADMIN_PADDLE_A2D 0xEE
 #define WINKEY_RETURN_THIS_FOR_ADMIN_SPEED_A2D 0x00
 

@@ -19,6 +19,7 @@ JBA: This is the version with all of my mods - Based in a fairly recent
 IDE Notes:
   - Need to select correct USB port, board and programmer from TOOLS menu
   - For arduino nano, select "Arduino Nano" and "ATmega328P (OLD Bootloader)"
+  - For ESP32-WROOM-32, select "ESP32 Dev Module"
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -1416,7 +1417,26 @@ Recent Update History
       FEATURE_WINKEY_EMULATION: Now expect three parameters from deprecated Paddle A2D command
 
     2023.10.28.2304
-      FEATURE_AUDIOPWMSINEWAVE for Raspberry Pi Pico 
+      FEATURE_AUDIOPWMSINEWAVE for Raspberry Pi Pico
+      
+    2024.02.17.1400
+      Fixed issues found by swalberg ( https://github.com/k3ng/k3ng_cw_keyer/commit/e79277672f4c04dfeeef5bfb9c82e384b59f32c4#r134909644 ).  Thanks!
+
+    2024.02.17.1600
+      OPTION_WORDSWORTH_POLISH - Polish CW training text from Piotr, SP2BPD.  Thanks!
+      Straight key capability for CW training Piotr, SP2BPD.  Thanks!
+
+    2024.02.27.2314
+      HARDWARE_MORTTY_PICO_OVER_USB - Updated for Mortty v5
+
+    2024.02.28.0239
+      FEATURE_MORTTY_SPEEDPOT_BOOT_FUNCTION
+
+    2024.03.15.1354
+      FEATURE_WINKEY_EMULATION: Changed potentiometer behavior to work correctly with N1MM+ pot settings
+
+    2024.03.20.2239
+      tx_inhibit: unkey PTT when tx_inhibit goes active
 
   qwerty
 
@@ -1448,7 +1468,7 @@ If you offer a hardware kit using this software, show your appreciation by sendi
 */
 
 
-#define CODE_VERSION "2023.10.28.2304"
+#define CODE_VERSION "2024.03.20.2239"
 
 #define eeprom_magic_number 41               // you can change this number to have the unit re-initialize EEPROM
 
@@ -1663,7 +1683,7 @@ If you offer a hardware kit using this software, show your appreciation by sendi
 
 #if defined(FEATURE_LCD_SAINSMART_I2C)
   #include <LiquidCrystal_I2C.h>
-#endif //FEATURE_SAINSMART_I2C_LCD  
+#endif
 
 #if defined(FEATURE_LCD_FABO_PCF8574)
   #include <FaBoLCD_PCF8574.h>
@@ -1705,7 +1725,8 @@ If you offer a hardware kit using this software, show your appreciation by sendi
     #include <EthernetUdp.h>
   #endif //FEATURE_INTERNET_LINK
 #endif //!defined(ARDUINO_MAPLE_MINI) && !defined(ARDUINO_GENERIC_STM32F103C) //sp5iou 20180329
-#endif
+#endif //FEATURE_ETHERNET
+
 
 #if defined(FEATURE_USB_KEYBOARD) || defined(FEATURE_USB_MOUSE)  // note_usb_uncomment_lines
   // #include <hidboot.h>  // Arduino 1.6.x (and maybe 1.5.x) has issues with these three lines, moreover we noted that Arduino 1.8.6 it's not afected by an issue during USB Shield SPI init see https://github.com/felis/USB_Host_Shield_2.0/issues/390
@@ -1732,6 +1753,8 @@ If you offer a hardware kit using this software, show your appreciation by sendi
   #define tone   PWMTone
   #define noTone noPWMTone
 #endif
+
+
 
 #if defined(ARDUINO_SAMD_VARIANT_COMPLIANCE)
   extern uint32_t __get_MSP(void);
@@ -2300,10 +2323,12 @@ unsigned long millis_rollover = 0;
   byte check_serial_override = 0;
   #if defined(OPTION_WORDSWORTH_CZECH)
     #include "keyer_training_text_czech.h"
-  #elif defined(OPTION_WORDSWORTH_DEUTCSH)
+  #elif defined(OPTION_WORDSWORTH_DEUTSCH)
     #include "keyer_training_text_deutsch.h"
   #elif defined(OPTION_WORDSWORTH_NORSK)
     #include "keyer_training_text_norsk.h"
+  #elif defined(OPTION_WORDSWORTH_POLISH)
+    #include "keyer_training_text_polish.h"    
   #else
     #include "keyer_training_text_english.h"
   #endif
@@ -2387,10 +2412,14 @@ byte async_eeprom_write = 0;
 void setup()
 {
   #if defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
-  check_run_tinyfsk_pin();
+  check_run_tinyfsk_pin(); // read Mortty+v5 CW<->RTTY slide switch
   if (runTinyFSK){
     TinyFSKsetup();
   } else {
+  #endif
+
+  #if defined(FEATURE_MORTTY_SPEEDPOT_BOOT_FUNCTION)
+    mortty_speedpot_boot_function();
   #endif
 
   initialize_pins();
@@ -2421,11 +2450,16 @@ void setup()
   initialize_display();
   initialize_sd_card();
   initialize_debug_startup();
-  
+
   #if defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
   } //if (runTinyFSK)
   #endif
-
+  
+  #if defined(FEATURE_MIDI)
+    midi_setup();
+  #endif
+  
+  initialize_audiopwmsinewave();
 }
 
 // --------------------------------------------------------------------------------------------
@@ -2615,8 +2649,79 @@ void loop()
 
 // Subroutines --------------------------------------------------------------------------------------------
 
-
 // Are you a radio artisan ?
+
+#if defined(FEATURE_MORTTY_SPEEDPOT_BOOT_FUNCTION)
+  void mortty_speedpot_boot_function(){
+
+    int releaseLevel = 1;  // Mortty_v5 feature: releaseLevel display blink
+
+    check_run_tinyfsk_pin();               // set which mode to run
+    digitalWrite(pin_keyer_running, LOW);  // both LEDs off
+    digitalWrite(pin_rtty_running, LOW);   // both LEDs off
+    if (analogRead(potentiometer) < 33) {  // Speed Pot at or near MIN of 0
+                                          // Mortty_v5 feature: blinking LEDs represent releaseLevel
+                                          // blink both CW&RTTY LEDs simultaneously - user counts releaseLevel
+      delay(1000);
+      for (int loopCount = 1; loopCount <= releaseLevel; loopCount++) {
+        digitalWrite(pin_keyer_running, HIGH);
+        digitalWrite(pin_rtty_running, HIGH);
+        delay(500);
+        digitalWrite(pin_keyer_running, LOW);
+        digitalWrite(pin_rtty_running, LOW);
+        delay(500);
+      }
+    } else {
+      if (analogRead(potentiometer) > 984) {  // Speed Pot at or near MAX of 1023
+                                              // Mortty_v5 feature: update firmware without disassembly
+                                              // bootLoader mounts Mortty storage in File I/O mode
+        delay(1000);
+        digitalWrite(pin_keyer_running, HIGH);
+        digitalWrite(pin_rtty_running, LOW);
+        for (int loopCount = 1; loopCount < 50; loopCount++) {
+          // notify the user - blink the rear=panel CW & RTTY LEDs
+          digitalWrite(pin_keyer_running, (!digitalRead(pin_keyer_running)));  // toggle
+          digitalWrite(pin_rtty_running, (!digitalRead(pin_rtty_running)));    // toggle
+          delay(100);
+          if (analogRead(potentiometer) < 200) {  // user turned speed pot - Speed Pot at or near MIN of 0
+            rp2040.rebootToBootloader();          // reboot the RP2040 as File I/O mounted drive
+          }
+        }
+      }
+    }
+    digitalWrite(pin_keyer_running, LOW);  // both LEDs off
+    digitalWrite(pin_rtty_running, LOW);   // both LEDs off
+    delay(1000);
+
+  }
+#endif
+
+//-------------------------------------------------------------------------------------------------------
+
+
+void initialize_audiopwmsinewave(){
+
+  #if defined(FEATURE_AUDIOPWMSINEWAVE) // Raspberry Pi Pico hardware only
+    // // SIDETONE -  define the PWM ouput pin, frequency and dutyCycle
+    RPI_PICO_Timer timerSidetone(0);
+    sidetoneCarrierHz = 40000;  // frequency in Hz - 1000 = 1 kilohertz. even multiple of 20 slices
+    sidetoneDutyCycle = 50000;  // dutyCycle = real_dutyCycle * 1000, dutyCycle 50% = 50000;  USE 5?4? DIGITS: "0000" == zero
+    PWM_Sidetone = new RP2040_PWM(pin_Sidetone, sidetoneCarrierHz, false);
+    if (PWM_Sidetone) {
+      //   Serial.print("Defining PWM_Sidetone OK, = ");
+      //   Serial.print(sidetoneCarrierHz);
+      //   Serial.println(" slices per each Sidetone audio cycle");
+      PWM_Sidetone->setPWM_Int(pin_Sidetone, sidetoneCarrierHz, sidetoneDutyCycle);    
+      isSidetoneON = false; // launch with sideTone == OFF
+    } else {
+      Serial.println("Defining PWM_Sidetone instance FAIL");
+    }  // end of Sidetone definition ---------------
+  #endif
+
+}
+
+//-------------------------------------------------------------------------------------------------------
+
 
 #if defined(FEATURE_DUAL_MODE_KEYER_AND_TINYFSK)
 void check_run_tinyfsk_pin(){
@@ -2712,6 +2817,7 @@ byte service_tx_inhibit_and_pause(){
           }
         #endif
       }
+      ptt_unkey();
     }
   }
 
@@ -2902,9 +3008,10 @@ void service_keypad(){
 
 //-------------------------------------------------------------------------------------------------------
 
-#ifdef FEATURE_STRAIGHT_KEY
+#if defined(FEATURE_STRAIGHT_KEY)
   long service_straight_key(){
 
+    long decode_character = 0;
     static byte last_straight_key_state = 0;
 
     if (digitalRead(pin_straight_key) == STRAIGHT_KEY_ACTIVE_STATE){
@@ -2912,13 +3019,10 @@ void service_keypad(){
         sending_mode = MANUAL_SENDING;
         tx_and_sidetone_key(1);
         last_straight_key_state = 1;
-
-
         #ifdef FEATURE_MEMORIES
           clear_send_buffer();
           repeat_memory = 255;
         #endif
-
       }
     } else {
       if (last_straight_key_state){
@@ -2929,7 +3033,6 @@ void service_keypad(){
     }
 
   #if defined(FEATURE_STRAIGHT_KEY_DECODE)
-
     static unsigned long last_transition_time = 0;
     static unsigned long last_decode_time = 0;
     static byte last_state = 0;
@@ -2940,10 +3043,8 @@ void service_keypad(){
     static int no_tone_count = 0;
     static int tone_count = 0;
     byte decode_it_flag = 0;
-
     int element_duration = 0;
     static float decoder_wpm = configuration.wpm;
-    long decode_character = 0;
     static byte space_sent = 0;
     #if defined(FEATURE_COMMAND_LINE_INTERFACE) && defined(FEATURE_STRAIGHT_KEY_ECHO)
       static byte screen_column = 0;
@@ -2956,13 +3057,10 @@ void service_keypad(){
       static byte cw_keyboard_backspace_flag = 0;
     #endif //defined(FEATURE_CW_COMPUTER_KEYBOARD)
 
-
-    if  (last_transition_time == 0) {
-      
+    if (last_transition_time == 0){
       if (last_straight_key_state == 1) {  // is this our first tone?
         last_transition_time = millis();
         last_state = 1;
-
         #ifdef FEATURE_SLEEP
           last_activity_time = millis();
         #endif //FEATURE_SLEEP
@@ -2972,7 +3070,7 @@ void service_keypad(){
 
       } else {
 
-          if ((last_decode_time > 0) && (!space_sent) && ((millis() - last_decode_time) > ((1200/decoder_wpm)*CW_DECODER_SPACE_PRINT_THRESH))) { // should we send a space?
+          if ((last_decode_time > 0) && (!space_sent) && ((millis() - last_decode_time) > ((1200/decoder_wpm)*CW_DECODER_SPACE_PRINT_THRESH))){ //should we send a space?
              #if defined(FEATURE_SERIAL) && defined(FEATURE_STRAIGHT_KEY_ECHO)
                #ifdef FEATURE_COMMAND_LINE_INTERFACE
                  primary_serial_port->write(32);
@@ -2996,10 +3094,8 @@ void service_keypad(){
 
           }// should we send a space?
       }
-      
     } else {
-      
-      if (last_straight_key_state != last_state) {
+      if (last_straight_key_state != last_state){
         // we have a transition
         element_duration = millis() - last_transition_time;
         if (element_duration > CW_DECODER_NOISE_FILTER) {                                    // filter out noise
@@ -3027,8 +3123,6 @@ void service_keypad(){
           last_transition_time = millis();
           if (decode_element_pointer == 16) { decode_it_flag = 1; }  // if we've filled up the array, go ahead and decode it
         }
-
-
       } else {
         // no transition
         element_duration = millis() - last_transition_time;
@@ -3042,16 +3136,15 @@ void service_keypad(){
           // have we had tone for an outrageous amount of time?
         }
       }
-     }
+    }
 
 
 
-    if (decode_it_flag) {                      // are we ready to decode the element array?
+    if (decode_it_flag){                  // are we ready to decode the element array?
 
       // adjust the decoder wpm based on what we got
 
-      if ((no_tone_count > 0) && (tone_count > 1)){ // NEW
-
+      if ((no_tone_count > 0) && (tone_count > 1)){
         if (decode_element_no_tone_average > 0) {
           if (abs((1200/decode_element_no_tone_average) - decoder_wpm) < 5) {
             decoder_wpm = (decoder_wpm + (1200/decode_element_no_tone_average))/2;
@@ -3065,12 +3158,10 @@ void service_keypad(){
             }
           }
         }
-
-
-      } // NEW
+      }
 
       #ifdef DEBUG_FEATURE_STRAIGHT_KEY_ECHO
-        if (abs(decoder_wpm - last_printed_decoder_wpm) > 0.9) {
+        if (abs(decoder_wpm - last_printed_decoder_wpm) > 0.9){
           debug_serial_port->print("<");
           debug_serial_port->print(int(decoder_wpm));
           debug_serial_port->print(">");
@@ -5606,15 +5697,26 @@ void check_potentiometer()
         debug_serial_port->print(F(" analog read: "));
         debug_serial_port->println(analogRead(potentiometer));
       #endif
-      if (keyer_machine_mode == KEYER_COMMAND_MODE) command_speed_set(pot_value_wpm_read);
-      else speed_set(pot_value_wpm_read);
-      last_pot_wpm_read = pot_value_wpm_read;
       #ifdef FEATURE_WINKEY_EMULATION
+        if (keyer_machine_mode == KEYER_COMMAND_MODE) {
+          command_speed_set(pot_value_wpm_read);
+        } else {
+          if (!winkey_host_open){
+            speed_set(pot_value_wpm_read);
+          }
+        }
         if ((primary_serial_port_mode == SERIAL_WINKEY_EMULATION) && (winkey_host_open)) {
           winkey_port_write(((pot_value_wpm_read-pot_wpm_low_value)|128),0);
           winkey_last_unbuffered_speed_wpm = configuration.wpm;
+        }        
+      #else
+        if (keyer_machine_mode == KEYER_COMMAND_MODE) {
+          command_speed_set(pot_value_wpm_read);
+        } else {
+          speed_set(pot_value_wpm_read);
         }
       #endif
+      last_pot_wpm_read = pot_value_wpm_read;
       #ifdef FEATURE_SLEEP
         last_activity_time = millis();
       #endif //FEATURE_SLEEP
@@ -6047,6 +6149,7 @@ void ptt_key(){
           #ifdef FEATURE_SEQUENCER
             sequencer_ptt_inactive_time = 0;
           #endif
+
         }
     #else
       if (configuration.current_ptt_line) {
@@ -6074,6 +6177,10 @@ void ptt_key(){
         #endif
       }
     #endif //FEATURE_SO2R_BASE
+
+    #ifdef FEATURE_MIDI
+      midi_key_ptt(1);
+    #endif
 
     ptt_line_activated = 1;
 
@@ -6213,6 +6320,11 @@ void ptt_unkey(){
         #endif
       #endif //FEATURE_SO2R_BASE
     }
+
+    #ifdef FEATURE_MIDI
+      midi_key_ptt(0);
+    #endif
+
     ptt_line_activated = 0;
     #ifdef FEATURE_SEQUENCER
       sequencer_ptt_inactive_time = millis();
@@ -6541,7 +6653,7 @@ int read_settings_from_eeprom() {
     }
 
   #endif //#if !defined(ARDUINO_SAM_DUE) && !defined(ARDUINO_ARCH_MBED)|| (defined(ARDUINO_SAM_DUE) && defined(FEATURE_EEPROM_E24C1024))
-    
+
   #else
     if (configFileExists())
     {
@@ -6732,10 +6844,10 @@ void send_dit(){
   #ifdef FEATURE_SEPARATE_PADDLE_SPEED
     if( (keyer_machine_mode == KEYER_COMMAND_MODE) || (sending_mode == MANUAL_SENDING) ){
   #else
-    if (keyer_machine_mode == KEYER_COMMAND_MODE){
+  if (keyer_machine_mode == KEYER_COMMAND_MODE){
   #endif //FEATURE_SEPARATE_PADDLE_SPEED
-      character_wpm = configuration.wpm_command_mode;
-    }
+    character_wpm = configuration.wpm_command_mode;
+  }
 
   being_sent = SENDING_DIT;
   tx_and_sidetone_key(1);
@@ -6828,10 +6940,10 @@ void send_dah(){
   #ifdef FEATURE_SEPARATE_PADDLE_SPEED
     if( (keyer_machine_mode == KEYER_COMMAND_MODE) || (sending_mode == MANUAL_SENDING) ){
   #else
-    if (keyer_machine_mode == KEYER_COMMAND_MODE){
+  if (keyer_machine_mode == KEYER_COMMAND_MODE){
   #endif //FEATURE_SEPARATE_PADDLE_SPEED
-      character_wpm = configuration.wpm_command_mode;
-    }
+    character_wpm = configuration.wpm_command_mode;
+  }
 
   being_sent = SENDING_DAH;
   tx_and_sidetone_key(1);
@@ -7403,6 +7515,10 @@ void speed_set(int wpm_set){
     #ifdef FEATURE_LED_RING
       update_led_ring();
     #endif //FEATURE_LED_RING
+
+    #ifdef FEATURE_MIDI
+      midi_send_wpm_response();
+    #endif
 
     #ifdef FEATURE_DISPLAY
       lcd_center_print_timed_wpm();
@@ -10618,7 +10734,7 @@ void winkey_unbuffered_speed_command(byte incoming_serial_byte) {
       // through the additional logic - hi hi.
       // configuration.wpm = incoming_serial_byte;   
       if (incoming_serial_byte < 64)
-        configuration.wpm = incoming_serial_byte;
+    configuration.wpm = incoming_serial_byte;
       else
         #ifdef FEATURE_SEPARATE_PADDLE_SPEED
         configuration.wpm_command_mode = incoming_serial_byte-64;
@@ -11637,7 +11753,7 @@ void service_winkey(byte action) {
               debug_serial_port->println("service_winkey:WINKEY_SIDETONE_FREQ_COMMAND");
             #endif //DEBUG_WINKEY
             break;
-          case 0x02:  // speed command - unbuffered                        - JBA !!!!!!!!!!!!!!
+          case 0x02:  // speed command - unbuffered
             winkey_status = WINKEY_UNBUFFERED_SPEED_COMMAND;
             #ifdef DEBUG_WINKEY
               debug_serial_port->println("service_winkey:WINKEY_UNBUFFERED_SPEED_COMMAND");
@@ -12251,11 +12367,15 @@ void service_winkey(byte action) {
             #endif //DEBUG_WINKEY
             winkey_status = WINKEY_NO_COMMAND_IN_PROGRESS;
             break;
-          case 0x09: // get cal
+          case 0x09: // get cal on WK1, unimplemented on WK2, getMajorVersion on WK3
             #ifdef DEBUG_WINKEY
               debug_serial_port->println("service_winkey:ADMIN_CMDgetcal");
             #endif //DEBUG_WINKEY
-            winkey_port_write(WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL,0);
+            #if defined(OPTION_WINKEY_2_SUPPORT)
+              winkey_port_write(WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL_WK2, 1); // Docs say this should be 0, but this is a hack for compatibility
+            #else
+              winkey_port_write(WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL_WK1, 1);
+            #endif
             winkey_status = WINKEY_NO_COMMAND_IN_PROGRESS;
             break;
           #ifdef OPTION_WINKEY_2_SUPPORT
@@ -12614,7 +12734,7 @@ void service_command_line_interface(PRIMARY_SERIAL_CLS * port_to_use) {
       #ifdef FEATURE_SEPARATE_PADDLE_SPEED
         if( incoming_serial_byte!='w' )     //JBA
       #endif //FEATURE_SEPARATE_PADDLE_SPEED
-          incoming_serial_byte = uppercase(incoming_serial_byte);
+      incoming_serial_byte = uppercase(incoming_serial_byte);
       port_to_use->write(incoming_serial_byte);
       process_serial_command(port_to_use);
       serial_backslash_command = 0;
@@ -15009,6 +15129,17 @@ void receive_transmit_echo_practice(PRIMARY_SERIAL_CLS * port_to_use, byte pract
           // TODO - print it to serial and lcd
         }
 
+        // code from Piotr, SP2BPD
+        #if defined(FEATURE_STRAIGHT_KEY)
+          long ext_key = service_straight_key();
+          if (ext_key != 0){
+            incoming_char = convert_cw_number_to_ascii(ext_key);
+            user_sent_cw.concat(incoming_char);
+            cw_char = 0;
+          }
+        #endif
+        // ------
+
         // do we have all the characters from the user? - if so, get out of user_send_loop
         if ((user_sent_cw.length() >= cw_to_send_to_user.length()) || ((progressive_step_counter < 255) && (user_sent_cw.length() == progressive_step_counter))) {
           user_send_loop = 0;
@@ -17291,7 +17422,7 @@ byte play_memory(byte memory_number) {
                     speed_set_cmd(int_from_macro);    // JBA
                   else                                // JBA
                   #endif //FEATURE_SEPARATE_PADDLE_SPEED
-                    speed_set(int_from_macro);
+                  speed_set(int_from_macro);
                 }
                 break;  // case W
 
@@ -17788,9 +17919,9 @@ void initialize_pins() {
     #else
     pinMode(pin_straight_key,INPUT);
     if (STRAIGHT_KEY_ACTIVE_STATE == HIGH){
-      digitalWrite (pin_straight_key, LOW);
+      digitalWrite(pin_straight_key, LOW);
     } else {
-      digitalWrite (pin_straight_key, HIGH);
+      digitalWrite(pin_straight_key, HIGH);
     }
     #endif
   #endif //FEATURE_STRAIGHT_KEY
@@ -18034,7 +18165,7 @@ void service_cw_decoder() {
     static float decoder_wpm = configuration.wpm_command_mode;
   else
   #endif //FEATURE_SEPARATE_PADDLE_SPEED
-    static float decoder_wpm = configuration.wpm;
+  static float decoder_wpm = configuration.wpm;
   
   long decode_character = 0;
   static byte space_sent = 0;
@@ -18544,7 +18675,12 @@ void initialize_serial_ports(){
 
     primary_serial_port = PRIMARY_SERIAL_PORT;
 
-    primary_serial_port->begin(primary_serial_port_baud_rate);
+    // JBA - Genuine Winkeyer uses 2-stop bits - ugh!
+    #if defined(FEATURE_WINKEY_EMULATION)
+       primary_serial_port->begin(primary_serial_port_baud_rate,WINKEY_DEFAULT_CONFIG);
+    #else
+       primary_serial_port->begin(primary_serial_port_baud_rate);
+    #endif //defined(FEATURE_WINKEY_EMULATION)
 
     #ifdef DEBUG_STARTUP
       debug_serial_port->println(F("setup: serial port opened"));
@@ -18756,6 +18892,10 @@ void initialize_display(){
       for (int x = 0;hi_text[x] != 0;x++){
         send_char(hi_text[x],KEYER_NORMAL);
       }
+
+      // JBA
+      //delay(1000);
+      //primary_serial_port->print("Hello World\n");
 
       configuration.sidetone_mode = oldSideTone;
       key_tx = oldKey;
@@ -22583,6 +22723,127 @@ void so2r_command() {
 #endif // FEATURE_SO2R_SWITCHES
 #endif //FEATURE_SO2R_BASE
 
+//-------------------------------------------------------------------------------------------------------
+
+#ifdef FEATURE_MIDI
+
+void midi_setup() {
+  // set callback for commands
+  usbMIDI.setHandleControlChange(myControlChange);
+}
+
+void midi_key_tx(int state) {
+  if (state) {
+    usbMIDI.sendNoteOn(OPTION_MIDI_BASE_NOTE+1, 99, OPTION_MIDI_KEYER_CHANNEL);
+  } else {
+    usbMIDI.sendNoteOff(OPTION_MIDI_BASE_NOTE+1, 0, OPTION_MIDI_KEYER_CHANNEL);
+  }
+}
+
+void midi_key_ptt(int state) {
+  if (state) {
+    usbMIDI.sendNoteOn(OPTION_MIDI_BASE_NOTE+0, 99, OPTION_MIDI_KEYER_CHANNEL);
+  } else {
+    usbMIDI.sendNoteOff(OPTION_MIDI_BASE_NOTE+0, 0, OPTION_MIDI_KEYER_CHANNEL);
+  }
+}
+
+// MIDI callback
+void myControlChange(byte channel, byte control, byte value) {
+  // debug
+  //usbMIDI.sendNoteOn(OPTION_MIDI_BASE_NOTE+1, 99, OPTION_MIDI_KEYER_CHANNEL);
+  //delay(100);
+  //usbMIDI.sendNoteOff(OPTION_MIDI_BASE_NOTE+1, 0, OPTION_MIDI_KEYER_CHANNEL);
+  // end debug
+
+  int ok = 1;
+
+  if (channel != OPTION_MIDI_INPUT_CHANNEL) {
+    // error, unexpected channel
+    sendMidiResponseOk(0);
+    return;
+  }
+
+  switch (control) {
+    case OPTION_MIDI_IS_KEYER_CONTROL:
+      // no switching in this Sketch
+      sendMidiResponseOk(0);
+//      if (value > 0) {
+//        setupIambic(1);
+//      } else {
+//        setupIambic(0);
+//      }
+      break;
+    case OPTION_MIDI_IAMBIC_CONTROL:
+      if (value > 0) {
+        setupIambicMode(1);
+      } else {
+        setupIambicMode(0);
+      }
+      break;
+    case OPTION_MIDI_WPM_CONTROL:
+      speed_set(value);
+      #ifdef FEATURE_WINKEY_EMULATION
+        winkey_port_write(((value - pot_wpm_low_value)|128),0);
+      #endif
+      break;
+    case OPTION_MIDI_REVERSE_CONTROL:
+      if (value > 0) {
+        configuration.paddle_mode = PADDLE_REVERSE;
+      } else {
+        configuration.paddle_mode = PADDLE_NORMAL;
+      }
+      break;
+    case OPTION_MIDI_GET_KEYER_STATE_CONTROL:
+      sendKeyerStateResponse();
+      break;
+    default:
+      // unknown command
+      sendMidiResponseOk(0);
+  }
+  if (ok == 1) {
+    sendMidiResponseOk(1);
+  } else {
+    sendMidiResponseOk(0);
+  }
+}
+
+void setupIambicMode(int modeB) {
+  if (modeB == 1) {
+    configuration.keyer_mode = IAMBIC_B;
+  } else {
+    configuration.keyer_mode = IAMBIC_A;
+  }
+  config_dirty = 1;
+}
+
+void sendMidiResponseOk(int ok) {
+  if (ok == 1) {
+    // ok
+    usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_OK, 99, OPTION_MIDI_RESPONSE_CHANNEL);
+  } else {
+    // error
+    usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_FAIL, 0, OPTION_MIDI_RESPONSE_CHANNEL);
+  }
+}
+
+void sendKeyerStateResponse() {
+  usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_IS_KEYER, 2, OPTION_MIDI_RESPONSE_CHANNEL);
+  usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_WPM, configuration.wpm, OPTION_MIDI_RESPONSE_CHANNEL);
+  usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_REVERSE, ( configuration.paddle_mode == PADDLE_REVERSE ? 1 : 0 ), OPTION_MIDI_RESPONSE_CHANNEL);
+  if (configuration.keyer_mode == IAMBIC_B) {
+    usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_IAMBIC, 1, OPTION_MIDI_RESPONSE_CHANNEL);
+  } else if (configuration.keyer_mode == IAMBIC_A) {
+    usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_IAMBIC, 0, OPTION_MIDI_RESPONSE_CHANNEL);
+  }
+}
+
+void midi_send_wpm_response() {
+  usbMIDI.sendControlChange(OPTION_MIDI_RESPONSE_WPM, configuration.wpm, OPTION_MIDI_RESPONSE_CHANNEL);
+}
+
+
+#endif // FEATURE_MIDI
 //-------------------------------------------------------------------------------------------------------
 
 

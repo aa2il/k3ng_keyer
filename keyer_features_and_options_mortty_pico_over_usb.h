@@ -53,6 +53,7 @@
 // #define FEATURE_COMMAND_MODE_ENHANCED_CMD_ACKNOWLEDGEMENT
 // #define FEATURE_WEB_SERVER      // Details: https://github.com/k3ng/k3ng_cw_keyer/wiki/390-Feature:-Ethernet,-Web-Server,-and-Internet-Linking
 // #define FEATURE_INTERNET_LINK   // Details: https://github.com/k3ng/k3ng_cw_keyer/wiki/390-Feature:-Ethernet,-Web-Server,-and-Internet-Linking
+#define FEATURE_AUDIOPWMSINEWAVE // Raspberry Pi Pico hardware only
 
 // #define FEATURE_COMMAND_LINE_INTERFACE_ON_SECONDARY_PORT     // Activate the Command Line interface on the secondary serial port
 // #define OPTION_PRIMARY_SERIAL_PORT_DEFAULT_WINKEY_EMULATION  // Use when activating both FEATURE_WINKEY_EMULATION and FEATURE_COMMAND_LINE_INTERFACE
@@ -107,6 +108,7 @@
 // #define OPTION_WORDSWORTH_CZECH
 // #define OPTION_WORDSWORTH_DEUTSCH
 // #define OPTION_WORDSWORTH_NORSK
+// #define OPTION_WORDSWORTH_POLISH
 
 #define OPTION_EXCLUDE_EXTENDED_CLI_COMMANDS
 // #define OPTION_NO_ULTIMATIC // reduce memory usage by removing ultimatic code.
@@ -119,3 +121,6 @@
 // #define OPTION_BEACON_MODE_PTT_TAIL_TIME             // adds the ptt tail time to each playing of memory 1 in beacon mode
 
 // #define OPTION_WINKEY_PROSIGN_COMPATIBILITY  // Additional character mappings to support K1EL Winkey emulation prosigns
+#define FEATURE_DUAL_MODE_KEYER_AND_TINYFSK // Mortty_v5 dual mode (CW Keyer, TinyFSK RTTY) support
+
+#define FEATURE_MORTTY_SPEEDPOT_BOOT_FUNCTION

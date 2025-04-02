@@ -72,10 +72,11 @@
 #define serial_program_memory_buffer_size 500
 #define eeprom_write_time_ms 30000
 
-//FEATURE_DUAL_MODE_KEYER_AND_TINYFSK
-#define pin_run_tinyfsk 0  // assert this pin HIGH at boot up to go into TinyFSK mode, LOW to go into keyer mode
-#define pin_rtty_running 0 // output - goes HIGH when TinyFSK is running
-#define pin_keyer_running 0  // output - goes HIGH when Keyer is running
+// CW<->RTTY DUAL MODE control - rear-panel slide switch: pin HIGH default = CW mode, LOW = TinyFSK mode
+// The "pin_run_tinyfsk" is only queried at boot, selecting the CW Keyer or TinyFSK RTTY sketch to launch
+#define pin_run_tinyfsk 20   // HIGH=CW, LOW=RTTY rear-panel mode slide switch (pullup input)
+#define pin_keyer_running 1  // HIGH when CW Keyer is running. rear-panel green status LED (output)
+#define pin_rtty_running 2   // HIGH when TinyFSK is running. rear-panel yellow status LED (output)
 
 #ifdef FEATURE_BUTTONS
   #define analog_buttons_number_of_buttons 4
@@ -148,7 +149,8 @@
 #define WINKEY_HANG_TIME_1_66 1.66
 #define WINKEY_HANG_TIME_2_0 2.0
 
-#define WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL 0x16
+#define WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL_WK1 0x0a
+#define WINKEY_RETURN_THIS_FOR_ADMIN_GET_CAL_WK2 0x18
 #define WINKEY_RETURN_THIS_FOR_ADMIN_PADDLE_A2D 0xEE
 #define WINKEY_RETURN_THIS_FOR_ADMIN_SPEED_A2D 0x00
 
